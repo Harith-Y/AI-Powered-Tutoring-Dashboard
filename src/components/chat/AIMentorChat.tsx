@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Send, Bot, User, Lightbulb, Code, Book, ArrowLeft, Sparkles, Clock, Target, Brain } from 'lucide-react';
 import { ChatMessage } from '../../types';
@@ -6,12 +7,9 @@ import { addProgress } from '../../services/firestore';
 import { memoryService, MemoryEvent } from '../../services/memoryService';
 import RecommendedResources from './RecommendedResources';
 
-interface AIMentorChatProps {
-  onBack?: () => void;
-}
-
-const AIMentorChat: React.FC<AIMentorChatProps> = ({ onBack }) => {
+const AIMentorChat: React.FC = () => {
   const { currentUser, userProfile, userProgress, userPreferences, weeklyPlan } = useAuth();
+  const navigate = useNavigate();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -370,14 +368,12 @@ const AIMentorChat: React.FC<AIMentorChatProps> = ({ onBack }) => {
       <div className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            {onBack && (
-              <button
-                onClick={onBack}
-                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-            )}
+            <button
+              onClick={() => navigate('/')}
+              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
             <div className="flex items-center space-x-3">
               <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
                 <Bot className="w-7 h-7 text-white" />

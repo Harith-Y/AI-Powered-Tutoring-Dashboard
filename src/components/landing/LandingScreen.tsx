@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { 
   Brain, 
@@ -74,12 +75,9 @@ const Tooltip: React.FC<TooltipProps> = ({
   );
 };
 
-interface LandingScreenProps {
-  onNavigate: (tab: string) => void;
-}
-
-const LandingScreen: React.FC<LandingScreenProps> = ({ onNavigate }) => {
+const LandingScreen: React.FC = () => {
   const { userProfile, userProgress, weeklyStats } = useAuth();
+  const navigate = useNavigate();
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
   const [tourStep, setTourStep] = useState(0);
   const [showTour, setShowTour] = useState(false);
@@ -91,7 +89,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onNavigate }) => {
       description: 'Explore your personalized learning analytics and progress tracking',
       icon: BarChart3,
       gradient: 'from-blue-500 to-cyan-500',
-      action: () => onNavigate('progress'),
+      action: () => navigate('/progress'),
       tooltip: {
         title: 'Progress Dashboard',
         description: 'See detailed analytics of your learning journey, including completion rates, time spent, and skill progression across different topics.'
@@ -103,7 +101,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onNavigate }) => {
       description: 'Chat with your intelligent tutor for personalized guidance',
       icon: MessageCircle,
       gradient: 'from-purple-500 to-pink-500',
-      action: () => onNavigate('mentor'),
+      action: () => navigate('/mentor'),
       tooltip: {
         title: 'AI Mentor Chat',
         description: 'Get instant help from your AI mentor. Ask questions, get explanations, and receive personalized learning recommendations based on your progress.'
@@ -115,7 +113,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onNavigate }) => {
       description: 'Let AI create a personalized study schedule based on your goals',
       icon: Brain,
       gradient: 'from-indigo-500 to-purple-500',
-      action: () => onNavigate('planner'),
+      action: () => navigate('/planner'),
       tooltip: {
         title: 'AI Weekly Planner',
         description: 'Our AI analyzes your learning patterns, available time, and skill gaps to create an optimized weekly study plan tailored just for you.'
@@ -195,29 +193,14 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onNavigate }) => {
     if (showTour) {
       nextTourStep();
     } else {
-      // Ensure we have a valid navigation function
-      if (typeof onNavigate === 'function') {
-        try {
-          action.action();
-        } catch (error) {
-          console.error('Navigation error:', error);
-          // Fallback navigation
-          onNavigate('overview');
-        }
+      try {
+        action.action();
+      } catch (error) {
+        console.error('Navigation error:', error);
+        navigate('/overview');
       }
     }
   };
-
-  // Remove auto-start tour to prevent issues
-  // useEffect(() => {
-  //   const timer = setTimeout(() => {
-  //     if (!showTour) {
-  //       startTour();
-  //     }
-  //   }, 2000);
-
-  //   return () => clearTimeout(timer);
-  // }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 relative overflow-hidden">
@@ -409,7 +392,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onNavigate }) => {
             </p>
             <div className="flex items-center justify-center space-x-4">
               <button
-                onClick={() => onNavigate('overview')}
+                onClick={() => navigate('/overview')}
                 className="bg-white text-indigo-600 px-8 py-3 rounded-xl font-semibold hover:bg-gray-100 transition-colors flex items-center"
               >
                 <BarChart3 className="w-5 h-5 mr-2" />

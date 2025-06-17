@@ -44,10 +44,10 @@ export const getUserProfile = async (uid: string): Promise<User | null> => {
 
 export const updateUserProfile = async (uid: string, updates: Partial<User>) => {
   const userRef = doc(db, 'users', uid);
-  await updateDoc(userRef, {
+  await setDoc(userRef, {
     ...updates,
     lastLoginAt: Timestamp.now()
-  });
+  }, { merge: true });
 };
 
 // User Preferences Operations

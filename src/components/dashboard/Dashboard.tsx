@@ -5,7 +5,8 @@ import ProgressOverview from './ProgressOverview';
 import AIMentorChat from '../chat/AIMentorChat';
 import SchedulePlanner from './SchedulePlanner';
 import ResourceRecommender from './ResourceRecommender';
-import { BarChart3, MessageCircle, Calendar, BookOpen } from 'lucide-react';
+import AIWeeklyPlanner from '../planner/AIWeeklyPlanner';
+import { BarChart3, MessageCircle, Calendar, BookOpen, Brain } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
   const { userProfile } = useAuth();
@@ -14,6 +15,7 @@ const Dashboard: React.FC = () => {
   const tabs = [
     { id: 'overview', label: 'Overview', icon: BarChart3 },
     { id: 'mentor', label: 'AI Mentor', icon: MessageCircle },
+    { id: 'planner', label: 'AI Planner', icon: Brain },
     { id: 'schedule', label: 'Schedule', icon: Calendar },
     { id: 'resources', label: 'Resources', icon: BookOpen },
   ];
@@ -24,6 +26,8 @@ const Dashboard: React.FC = () => {
         return <ProgressOverview />;
       case 'mentor':
         return <AIMentorChat onBack={() => setActiveTab('overview')} />;
+      case 'planner':
+        return <AIWeeklyPlanner />;
       case 'schedule':
         return <SchedulePlanner />;
       case 'resources':

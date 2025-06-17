@@ -22,12 +22,16 @@ interface RetrievedMemory {
 
 class MemoryService {
   private baseUrl: string;
+  private isConfigured: boolean;
 
   constructor() {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
     
-    if (!supabaseUrl) {
-      console.warn('VITE_SUPABASE_URL not found in environment variables. Memory service will use fallback mode.');
+    this.isConfigured = !!(supabaseUrl && anonKey);
+    
+    if (!this.isConfigured) {
+      console.warn('Supabase configuration missing. Memory service will use fallback mode.');
       this.baseUrl = '';
     } else {
       this.baseUrl = `${supabaseUrl}/functions/v1/pinecone-memory`;
@@ -35,18 +39,17 @@ class MemoryService {
   }
 
   async storeMemory(memoryEvent: MemoryEvent): Promise<boolean> {
-    if (!this.baseUrl) {
+    if (!this.isConfigured) {
       console.log('Memory service in fallback mode - storing locally');
-      return true; // Simulate success for development
+      this.storeMemoryLocally(memoryEvent);
+      return true;
     }
 
     try {
       const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
-      if (!anonKey) {
-        console.warn('VITE_SUPABASE_ANON_KEY not found. Cannot authenticate with Supabase.');
-        return false;
-      }
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
 
       const response = await fetch(`${this.baseUrl}/store`, {
         method: 'POST',
@@ -54,19 +57,26 @@ class MemoryService {
           'Authorization': `Bearer ${anonKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(memoryEvent)
+        body: JSON.stringify(memoryEvent),
+        signal: controller.signal
       });
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
-        console.error('Failed to store memory:', response.statusText);
-        return false;
+        console.error('Failed to store memory:', response.status, response.statusText);
+        // Fallback to local storage
+        this.storeMemoryLocally(memoryEvent);
+        return true; // Still return success since we have fallback
       }
 
       const result = await response.json();
       return result.success;
     } catch (error) {
       console.error('Error storing memory:', error);
-      return false;
+      // Fallback to local storage
+      this.storeMemoryLocally(memoryEvent);
+      return true; // Still return success since we have fallback
     }
   }
 
@@ -76,18 +86,16 @@ class MemoryService {
     topic: string, 
     topK: number = 5
   ): Promise<RetrievedMemory[]> {
-    if (!this.baseUrl) {
-      console.log('Memory service in fallback mode - returning mock data');
-      return this.getMockMemories(userId, currentQuestion, topic);
+    if (!this.isConfigured) {
+      console.log('Memory service in fallback mode - retrieving from local storage');
+      return this.getLocalMemories(userId, currentQuestion, topic, topK);
     }
 
     try {
       const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
-      if (!anonKey) {
-        console.warn('VITE_SUPABASE_ANON_KEY not found. Cannot authenticate with Supabase.');
-        return this.getMockMemories(userId, currentQuestion, topic);
-      }
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
 
       const response = await fetch(`${this.baseUrl}/retrieve`, {
         method: 'POST',
@@ -100,18 +108,94 @@ class MemoryService {
           currentQuestion,
           topic,
           topK
-        })
+        }),
+        signal: controller.signal
       });
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
-        console.error('Failed to retrieve memories:', response.statusText);
-        return this.getMockMemories(userId, currentQuestion, topic);
+        console.error('Failed to retrieve memories:', response.status, response.statusText);
+        return this.getLocalMemories(userId, currentQuestion, topic, topK);
       }
 
       const result = await response.json();
-      return result.success ? result.memories : [];
+      return result.success ? result.memories : this.getLocalMemories(userId, currentQuestion, topic, topK);
     } catch (error) {
       console.error('Error retrieving memories:', error);
+      return this.getLocalMemories(userId, currentQuestion, topic, topK);
+    }
+  }
+
+  private storeMemoryLocally(memoryEvent: MemoryEvent): void {
+    try {
+      const storageKey = `ai_tutor_memories_${memoryEvent.userId}`;
+      const existingMemories = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      
+      const newMemory = {
+        ...memoryEvent,
+        timestamp: new Date().toISOString(),
+        id: Date.now().toString()
+      };
+      
+      existingMemories.push(newMemory);
+      
+      // Keep only the last 50 memories to avoid storage bloat
+      if (existingMemories.length > 50) {
+        existingMemories.splice(0, existingMemories.length - 50);
+      }
+      
+      localStorage.setItem(storageKey, JSON.stringify(existingMemories));
+    } catch (error) {
+      console.error('Error storing memory locally:', error);
+    }
+  }
+
+  private getLocalMemories(userId: string, currentQuestion: string, topic: string, topK: number): RetrievedMemory[] {
+    try {
+      const storageKey = `ai_tutor_memories_${userId}`;
+      const existingMemories = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      
+      if (existingMemories.length === 0) {
+        return this.getMockMemories(userId, currentQuestion, topic);
+      }
+      
+      // Simple relevance scoring based on topic and question similarity
+      const scoredMemories = existingMemories.map((memory: any) => {
+        let similarity = 0;
+        
+        // Topic match
+        if (memory.topic.toLowerCase() === topic.toLowerCase()) {
+          similarity += 0.5;
+        } else if (memory.category && memory.category.toLowerCase() === topic.toLowerCase()) {
+          similarity += 0.3;
+        }
+        
+        // Question similarity (simple keyword matching)
+        const currentWords = currentQuestion.toLowerCase().split(' ');
+        const memoryWords = memory.question.toLowerCase().split(' ');
+        const commonWords = currentWords.filter(word => memoryWords.includes(word) && word.length > 3);
+        similarity += (commonWords.length / Math.max(currentWords.length, memoryWords.length)) * 0.5;
+        
+        return {
+          question: memory.question,
+          topic: memory.topic,
+          response: memory.response,
+          timestamp: memory.timestamp,
+          skillLevel: memory.skillLevel,
+          category: memory.category,
+          sentiment: memory.sentiment,
+          similarity
+        };
+      });
+      
+      // Sort by similarity and return top K
+      return scoredMemories
+        .sort((a, b) => b.similarity - a.similarity)
+        .slice(0, topK);
+        
+    } catch (error) {
+      console.error('Error retrieving local memories:', error);
       return this.getMockMemories(userId, currentQuestion, topic);
     }
   }
@@ -207,6 +291,23 @@ class MemoryService {
     const diffInWeeks = Math.floor(diffInDays / 7);
     if (diffInWeeks === 1) return '1 week ago';
     return `${diffInWeeks} weeks ago`;
+  }
+
+  // Method to check if the service is properly configured
+  isServiceConfigured(): boolean {
+    return this.isConfigured;
+  }
+
+  // Method to get configuration status for debugging
+  getConfigurationStatus(): { configured: boolean; hasUrl: boolean; hasKey: boolean } {
+    const hasUrl = !!import.meta.env.VITE_SUPABASE_URL;
+    const hasKey = !!import.meta.env.VITE_SUPABASE_ANON_KEY;
+    
+    return {
+      configured: this.isConfigured,
+      hasUrl,
+      hasKey
+    };
   }
 }
 

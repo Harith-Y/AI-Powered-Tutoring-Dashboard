@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Brain, Clock, Star, Plus, CheckCircle, Lightbulb, TrendingUp, Target } from 'lucide-react';
+import { Brain, Clock, Star, Plus, CheckCircle, Lightbulb, TrendingUp, Target, AlertCircle } from 'lucide-react';
 import { addWeeklyPlanItem } from '../../services/firestore';
 
 interface TopicRecommendation {
@@ -19,11 +19,14 @@ const WhatsNext: React.FC = () => {
   const [recommendations, setRecommendations] = useState<TopicRecommendation[]>([]);
   const [loading, setLoading] = useState(false);
   const [acceptedRecommendations, setAcceptedRecommendations] = useState<Set<string>>(new Set());
+  const [error, setError] = useState<string | null>(null);
 
   const fetchRecommendations = async () => {
     if (!currentUser || !userProfile) return;
 
     setLoading(true);
+    setError(null);
+    
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -46,33 +49,54 @@ const WhatsNext: React.FC = () => {
         completedAt: progress.completedAt.toISOString()
       }));
 
-      const response = await fetch(`${supabaseUrl}/functions/v1/topic-recommendations`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${anonKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: currentUser.uid,
-          topicHistory,
-          skillLevel: userProfile.skillLevel,
-          preferredTopics: userProfile.preferredTopics
-        })
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      try {
+        const response = await fetch(`${supabaseUrl}/functions/v1/topic-recommendations`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${anonKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: currentUser.uid,
+            topicHistory,
+            skillLevel: userProfile.skillLevel,
+            preferredTopics: userProfile.preferredTopics
+          }),
+          signal: controller.signal
+        });
 
-      const data = await response.json();
-      
-      if (data.success && data.recommendations) {
-        setRecommendations(data.recommendations);
-      } else {
-        throw new Error(data.error || 'Failed to get recommendations');
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`Edge function returned ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        
+        if (data.success && data.recommendations) {
+          setRecommendations(data.recommendations);
+        } else {
+          throw new Error(data.error || 'Failed to get recommendations from edge function');
+        }
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        
+        if (fetchError instanceof Error) {
+          if (fetchError.name === 'AbortError') {
+            throw new Error('Request timed out - edge function may not be deployed');
+          } else if (fetchError.message.includes('Failed to fetch')) {
+            throw new Error('Cannot connect to Supabase edge functions - they may not be deployed');
+          }
+        }
+        throw fetchError;
       }
     } catch (error) {
       console.error('Error fetching recommendations:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setError(errorMessage);
       setRecommendations(getFallbackRecommendations());
     } finally {
       setLoading(false);
@@ -80,7 +104,11 @@ const WhatsNext: React.FC = () => {
   };
 
   const getFallbackRecommendations = (): TopicRecommendation[] => {
-    return [
+    // Generate recommendations based on user's current progress and skill level
+    const skillLevel = userProfile?.skillLevel || 'beginner';
+    const completedTopics = userProgress?.map(p => p.topicName.toLowerCase()) || [];
+    
+    const allRecommendations = [
       {
         topicId: 'react-hooks',
         topicName: 'React Hooks Deep Dive',
@@ -110,8 +138,58 @@ const WhatsNext: React.FC = () => {
         confidence: 0.72,
         reasoning: 'Perfect for creating complex, responsive layouts efficiently.',
         prerequisites: ['CSS Basics', 'Flexbox']
+      },
+      {
+        topicId: 'typescript-basics',
+        topicName: 'TypeScript Fundamentals',
+        category: 'TypeScript',
+        difficulty: 'beginner',
+        estimatedTime: 100,
+        confidence: 0.80,
+        reasoning: 'Add type safety to your JavaScript projects and improve code quality.',
+        prerequisites: ['JavaScript Fundamentals']
+      },
+      {
+        topicId: 'node-express',
+        topicName: 'Node.js & Express Server',
+        category: 'Backend',
+        difficulty: 'intermediate',
+        estimatedTime: 150,
+        confidence: 0.75,
+        reasoning: 'Learn server-side development to build full-stack applications.',
+        prerequisites: ['JavaScript Fundamentals', 'Async JavaScript']
+      },
+      {
+        topicId: 'react-state-management',
+        topicName: 'React State Management',
+        category: 'React',
+        difficulty: 'advanced',
+        estimatedTime: 180,
+        confidence: 0.70,
+        reasoning: 'Master complex state management patterns for large React applications.',
+        prerequisites: ['React Hooks', 'React Basics']
       }
     ];
+
+    // Filter recommendations based on skill level and completed topics
+    const filteredRecommendations = allRecommendations.filter(rec => {
+      // Don't recommend topics already completed
+      if (completedTopics.some(topic => rec.topicName.toLowerCase().includes(topic))) {
+        return false;
+      }
+
+      // Filter by skill level
+      if (skillLevel === 'beginner' && rec.difficulty === 'advanced') {
+        return false;
+      }
+      if (skillLevel === 'advanced' && rec.difficulty === 'beginner') {
+        return false;
+      }
+
+      return true;
+    });
+
+    return filteredRecommendations.slice(0, 3);
   };
 
   useEffect(() => {
@@ -187,7 +265,9 @@ const WhatsNext: React.FC = () => {
           </div>
           <div>
             <h2 className="text-xl font-semibold text-gray-900">What's Next?</h2>
-            <p className="text-sm text-gray-600">AI-powered recommendations based on your progress</p>
+            <p className="text-sm text-gray-600">
+              {error ? 'Smart recommendations based on your progress' : 'AI-powered recommendations based on your progress'}
+            </p>
           </div>
         </div>
         
@@ -200,6 +280,22 @@ const WhatsNext: React.FC = () => {
           {loading ? 'Analyzing...' : 'Refresh'}
         </button>
       </div>
+
+      {error && (
+        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+          <div className="flex items-center mb-2">
+            <AlertCircle className="w-5 h-5 text-amber-600 mr-2" />
+            <span className="font-medium text-amber-800">Using Offline Mode</span>
+          </div>
+          <p className="text-sm text-amber-700 mb-2">
+            Unable to connect to AI recommendation service. Showing smart recommendations based on your progress.
+          </p>
+          <details className="text-xs text-amber-600">
+            <summary className="cursor-pointer hover:text-amber-800">Technical details</summary>
+            <p className="mt-1 font-mono bg-amber-100 p-2 rounded">{error}</p>
+          </details>
+        </div>
+      )}
 
       {loading ? (
         <div className="space-y-4">
@@ -278,7 +374,7 @@ const WhatsNext: React.FC = () => {
                   <div className="flex items-center space-x-2">
                     <Lightbulb className="w-4 h-4 text-indigo-500" />
                     <span className="text-xs text-gray-500">
-                      Powered by TensorFlow Recommenders
+                      {error ? 'Smart Algorithm' : 'Powered by TensorFlow Recommenders'}
                     </span>
                   </div>
                   
@@ -303,7 +399,7 @@ const WhatsNext: React.FC = () => {
         </div>
       )}
 
-      {!loading && recommendations.length === 0 && (
+      {!loading && recommendations.length === 0 && !error && (
         <div className="text-center py-8">
           <Target className="w-12 h-12 text-gray-300 mx-auto mb-4" />
           <p className="text-gray-500 mb-2">No recommendations available</p>
@@ -317,9 +413,11 @@ const WhatsNext: React.FC = () => {
           <span className="font-medium text-purple-800">How it works</span>
         </div>
         <p className="text-sm text-purple-700">
-          Our TensorFlow-powered recommendation engine analyzes your learning history, skill level, and preferences 
-          to suggest the most relevant next topics. Each recommendation includes confidence scores and reasoning 
-          to help you make informed learning decisions.
+          {error ? (
+            'Our smart recommendation system analyzes your learning history, skill level, and preferences to suggest relevant next topics. When AI services are available, we use TensorFlow-powered analysis for even more personalized recommendations.'
+          ) : (
+            'Our TensorFlow-powered recommendation engine analyzes your learning history, skill level, and preferences to suggest the most relevant next topics. Each recommendation includes confidence scores and reasoning to help you make informed learning decisions.'
+          )}
         </p>
       </div>
     </div>

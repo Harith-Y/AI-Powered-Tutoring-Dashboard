@@ -21,7 +21,7 @@ interface AIRecommendation {
 }
 
 const AIWeeklyPlanner: React.FC = () => {
-  const { currentUser, userProfile, userProgress, weeklyPlan, userPreferences } = useAuth();
+  const { currentUser, userProfile, userProgress = [], weeklyPlan, userPreferences } = useAuth();
   const [availability, setAvailability] = useState<UserAvailability>({});
   const [showAvailabilitySetup, setShowAvailabilitySetup] = useState(false);
   const [aiRecommendations, setAiRecommendations] = useState<AIRecommendation[]>([]);

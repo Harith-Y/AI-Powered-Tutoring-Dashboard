@@ -15,7 +15,7 @@ interface TopicRecommendation {
 }
 
 const WhatsNext: React.FC = () => {
-  const { currentUser, userProfile, userProgress } = useAuth();
+  const { currentUser, userProfile, userProgress = [] } = useAuth();
   const [recommendations, setRecommendations] = useState<TopicRecommendation[]>([]);
   const [loading, setLoading] = useState(false);
   const [acceptedRecommendations, setAcceptedRecommendations] = useState<Set<string>>(new Set());
@@ -36,7 +36,7 @@ const WhatsNext: React.FC = () => {
       }
 
       // Prepare topic history for the ML model
-      const topicHistory = userProgress.map(progress => ({
+      const topicHistory = (userProgress || []).map(progress => ({
         topicId: progress.topicId,
         topicName: progress.topicName,
         category: progress.category,

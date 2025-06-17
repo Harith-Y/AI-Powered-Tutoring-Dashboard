@@ -38,7 +38,7 @@ interface TopicProgress {
 }
 
 const ProgressDashboard: React.FC = () => {
-  const { userProfile, userProgress, weeklyStats } = useAuth();
+  const { userProfile, userProgress = [], weeklyStats } = useAuth();
   const [selectedTimeframe, setSelectedTimeframe] = useState<'week' | 'month' | 'all'>('week');
   const [showLeaderboard, setShowLeaderboard] = useState(true);
 

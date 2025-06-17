@@ -76,7 +76,7 @@ const Tooltip: React.FC<TooltipProps> = ({
 };
 
 const LandingScreen: React.FC = () => {
-  const { userProfile, userProgress, weeklyStats } = useAuth();
+  const { userProfile, userProgress = [], weeklyStats } = useAuth();
   const navigate = useNavigate();
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
   const [tourStep, setTourStep] = useState(0);
@@ -146,7 +146,7 @@ const LandingScreen: React.FC = () => {
 
   const stats = [
     {
-      value: userProgress.length.toString(),
+      value: (userProgress || []).length.toString(),
       label: 'Topics Completed',
       icon: BookOpen
     },
@@ -244,7 +244,7 @@ const LandingScreen: React.FC = () => {
         </div>
 
         {/* Stats Overview */}
-        {userProgress.length > 0 && (
+        {(userProgress || []).length > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">
             {stats.map((stat, index) => {
               const Icon = stat.icon;

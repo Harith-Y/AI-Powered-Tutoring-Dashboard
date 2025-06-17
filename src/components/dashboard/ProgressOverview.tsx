@@ -4,17 +4,17 @@ import { Trophy, Target, Flame, Clock, CheckCircle, BookOpen, TrendingUp, Sparkl
 import WhatsNext from './WhatsNext';
 
 const ProgressOverview: React.FC = () => {
-  const { userProfile, userProgress, weeklyStats, weeklyPlan } = useAuth();
+  const { userProfile, userProgress = [], weeklyStats, weeklyPlan } = useAuth();
 
   // Calculate progress metrics from real data
-  const totalTopics = userProgress.length;
+  const totalTopics = userProgress?.length || 0;
   const completedThisWeek = weeklyStats?.topicsCompleted || 0;
   const streakDays = weeklyStats?.streakDays || 0;
   const totalStudyTime = weeklyStats?.totalTimeSpent || 0;
   const averageScore = weeklyStats?.averageScore || 0;
 
   // Weekly goal progress
-  const weeklyGoal = userProfile?.learningGoals.length || 5;
+  const weeklyGoal = userProfile?.learningGoals?.length || 5;
   const weeklyProgress = Math.min(completedThisWeek, weeklyGoal);
   const weeklyPercentage = weeklyGoal > 0 ? Math.round((weeklyProgress / weeklyGoal) * 100) : 0;
 
@@ -54,7 +54,7 @@ const ProgressOverview: React.FC = () => {
   ];
 
   // Recent activities from user progress
-  const recentActivities = userProgress.slice(0, 4).map(progress => ({
+  const recentActivities = (userProgress || []).slice(0, 4).map(progress => ({
     title: `Completed "${progress.topicName}"`,
     time: getTimeAgo(progress.completedAt),
     type: 'completion',
@@ -130,7 +130,7 @@ const ProgressOverview: React.FC = () => {
             </div>
             
             <div className="space-y-4">
-              {userProfile?.learningGoals.length ? (
+              {userProfile?.learningGoals?.length ? (
                 userProfile.learningGoals.map((goal, index) => (
                   <div key={index} className="group">
                     <div className="flex items-center p-4 bg-gradient-to-r from-gray-50 to-indigo-50 rounded-xl hover:from-indigo-50 hover:to-purple-50 transition-all duration-300 border border-gray-100 hover:border-indigo-200">
@@ -157,7 +157,7 @@ const ProgressOverview: React.FC = () => {
               )}
             </div>
             
-            {userProfile?.learningGoals.length > 0 && (
+            {userProfile?.learningGoals?.length > 0 && (
               <button className="w-full mt-6 btn-secondary">
                 <Target className="w-4 h-4 mr-2" />
                 Add New Goal
@@ -267,9 +267,9 @@ const ProgressOverview: React.FC = () => {
               Skill Progress by Topic
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {userProfile?.preferredTopics.length ? (
+              {userProfile?.preferredTopics?.length ? (
                 userProfile.preferredTopics.map((topic, index) => {
-                  const topicProgress = userProgress.filter(p => 
+                  const topicProgress = (userProgress || []).filter(p => 
                     p.topicName.toLowerCase().includes(topic.toLowerCase())
                   );
                   const avgScore = topicProgress.length > 0 

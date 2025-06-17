@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Send, Bot, User, Lightbulb, Code, Book, ArrowLeft, Sparkles, Clock, Target } from 'lucide-react';
 import { ChatMessage } from '../../types';
 import { addProgress } from '../../services/firestore';
+import RecommendedResources from './RecommendedResources';
 
 interface AIMentorChatProps {
   onBack?: () => void;
@@ -13,6 +14,8 @@ const AIMentorChat: React.FC<AIMentorChatProps> = ({ onBack }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [currentQuery, setCurrentQuery] = useState('');
+  const [resourceFeedback, setResourceFeedback] = useState<Record<string, boolean>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -62,6 +65,55 @@ const AIMentorChat: React.FC<AIMentorChatProps> = ({ onBack }) => {
     greeting += `What would you like to explore today? I can help with:\n• Explaining concepts\n• Code reviews and debugging\n• Learning path recommendations\n• Practice exercises\n\nJust ask me anything! 🚀`;
     
     return greeting;
+  };
+
+  const extractSearchQuery = (message: string): string => {
+    // Extract key terms for resource search
+    const lowerMessage = message.toLowerCase();
+    
+    // Common programming topics and their search terms
+    const topicMappings: Record<string, string> = {
+      'react hooks': 'react hooks useState useEffect',
+      'javascript async': 'javascript async await promises',
+      'css grid': 'css grid layout responsive',
+      'typescript': 'typescript types interfaces',
+      'node.js': 'nodejs backend server',
+      'python': 'python programming basics',
+      'git': 'git version control github',
+      'database': 'database sql mongodb',
+      'api': 'api rest graphql',
+      'testing': 'testing jest unit integration'
+    };
+    
+    // Check for direct topic matches
+    for (const [topic, searchTerms] of Object.entries(topicMappings)) {
+      if (lowerMessage.includes(topic)) {
+        return searchTerms;
+      }
+    }
+    
+    // Extract programming-related keywords
+    const programmingKeywords = [
+      'react', 'javascript', 'typescript', 'python', 'css', 'html', 'node',
+      'hooks', 'async', 'await', 'promise', 'function', 'component', 'state',
+      'props', 'api', 'database', 'git', 'testing', 'debug', 'error'
+    ];
+    
+    const foundKeywords = programmingKeywords.filter(keyword => 
+      lowerMessage.includes(keyword)
+    );
+    
+    if (foundKeywords.length > 0) {
+      return foundKeywords.slice(0, 3).join(' ');
+    }
+    
+    // Fallback: use the original message if it contains question words
+    if (lowerMessage.includes('how') || lowerMessage.includes('what') || 
+        lowerMessage.includes('why') || lowerMessage.includes('explain')) {
+      return message;
+    }
+    
+    return '';
   };
 
   const getContextualResponse = (userMessage: string): string => {
@@ -188,6 +240,10 @@ const AIMentorChat: React.FC<AIMentorChatProps> = ({ onBack }) => {
     setInputMessage('');
     setIsTyping(true);
 
+    // Extract search query for RAG resources
+    const searchQuery = extractSearchQuery(currentMessage);
+    setCurrentQuery(searchQuery);
+
     // Simulate AI thinking time
     setTimeout(() => {
       const aiResponse: ChatMessage = {
@@ -213,6 +269,18 @@ const AIMentorChat: React.FC<AIMentorChatProps> = ({ onBack }) => {
         }).catch(console.error);
       }
     }, 1500 + Math.random() * 1000); // Variable response time for realism
+  };
+
+  const handleResourceFeedback = (resourceId: string, helpful: boolean) => {
+    setResourceFeedback(prev => ({ ...prev, [resourceId]: helpful }));
+    
+    // In a real implementation, this would send feedback to your analytics system
+    console.log(`Resource ${resourceId} marked as ${helpful ? 'helpful' : 'not helpful'}`);
+    
+    // You could also track this in Firestore for improving future recommendations
+    if (currentUser) {
+      // addResourceFeedback(currentUser.uid, resourceId, helpful);
+    }
   };
 
   const quickPrompts = [
@@ -251,7 +319,7 @@ const AIMentorChat: React.FC<AIMentorChatProps> = ({ onBack }) => {
                   <Sparkles className="w-5 h-5 text-indigo-500 ml-2" />
                 </h1>
                 <p className="text-sm text-gray-500">
-                  Personalized for {userProfile?.skillLevel} level • {userProgress.length} topics completed
+                  Personalized for {userProfile?.skillLevel} level • {userProgress.length} topics completed • RAG-powered
                 </p>
               </div>
             </div>
@@ -270,59 +338,69 @@ const AIMentorChat: React.FC<AIMentorChatProps> = ({ onBack }) => {
       <div className="flex-1 overflow-hidden">
         <div className="max-w-4xl mx-auto h-full flex flex-col">
           <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
+            {messages.map((message, index) => (
+              <div key={message.id}>
                 <div
-                  className={`max-w-3xl flex items-start space-x-3 ${
-                    message.sender === 'user' ? 'flex-row-reverse space-x-reverse' : ''
-                  }`}
+                  className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  {/* Avatar */}
                   <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      message.sender === 'user'
-                        ? 'bg-indigo-600'
-                        : 'bg-gradient-to-br from-indigo-500 to-purple-600'
+                    className={`max-w-3xl flex items-start space-x-3 ${
+                      message.sender === 'user' ? 'flex-row-reverse space-x-reverse' : ''
                     }`}
                   >
-                    {message.sender === 'user' ? (
-                      <User className="w-5 h-5 text-white" />
-                    ) : (
-                      <Bot className="w-5 h-5 text-white" />
-                    )}
-                  </div>
-
-                  {/* Message Content */}
-                  <div
-                    className={`px-6 py-4 rounded-2xl shadow-sm ${
-                      message.sender === 'user'
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-white border border-gray-200'
-                    }`}
-                  >
-                    <div className="prose prose-sm max-w-none">
-                      <p className={`whitespace-pre-wrap ${message.sender === 'user' ? 'text-white' : 'text-gray-900'}`}>
-                        {message.content}
-                      </p>
+                    {/* Avatar */}
+                    <div
+                      className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                        message.sender === 'user'
+                          ? 'bg-indigo-600'
+                          : 'bg-gradient-to-br from-indigo-500 to-purple-600'
+                      }`}
+                    >
+                      {message.sender === 'user' ? (
+                        <User className="w-5 h-5 text-white" />
+                      ) : (
+                        <Bot className="w-5 h-5 text-white" />
+                      )}
                     </div>
-                    
-                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-opacity-20">
-                      <div className="flex items-center space-x-2">
-                        <span className={`text-xs ${message.sender === 'user' ? 'text-indigo-200' : 'text-gray-500'}`}>
-                          {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                        {message.adaptedToLevel && (
-                          <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full">
-                            ✨ Adapted to your level
+
+                    {/* Message Content */}
+                    <div
+                      className={`px-6 py-4 rounded-2xl shadow-sm ${
+                        message.sender === 'user'
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-white border border-gray-200'
+                      }`}
+                    >
+                      <div className="prose prose-sm max-w-none">
+                        <p className={`whitespace-pre-wrap ${message.sender === 'user' ? 'text-white' : 'text-gray-900'}`}>
+                          {message.content}
+                        </p>
+                      </div>
+                      
+                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-opacity-20">
+                        <div className="flex items-center space-x-2">
+                          <span className={`text-xs ${message.sender === 'user' ? 'text-indigo-200' : 'text-gray-500'}`}>
+                            {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
-                        )}
+                          {message.adaptedToLevel && (
+                            <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full">
+                              ✨ Adapted to your level
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
+
+                {/* Show RAG Resources after AI responses */}
+                {message.sender === 'ai' && index === messages.length - 1 && currentQuery && (
+                  <RecommendedResources
+                    query={currentQuery}
+                    userLevel={userProfile?.skillLevel || 'beginner'}
+                    onFeedback={handleResourceFeedback}
+                  />
+                )}
               </div>
             ))}
             
@@ -339,7 +417,7 @@ const AIMentorChat: React.FC<AIMentorChatProps> = ({ onBack }) => {
                         <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
                         <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                       </div>
-                      <span className="text-sm text-gray-500">AI is thinking...</span>
+                      <span className="text-sm text-gray-500">AI is thinking and searching resources...</span>
                     </div>
                   </div>
                 </div>
@@ -394,7 +472,7 @@ const AIMentorChat: React.FC<AIMentorChatProps> = ({ onBack }) => {
               </button>
             </div>
             <p className="text-xs text-gray-500 mt-2 text-center">
-              AI responses are simulated and adapted to your learning level and progress
+              AI responses are personalized and include RAG-powered resource recommendations
             </p>
           </div>
         </div>

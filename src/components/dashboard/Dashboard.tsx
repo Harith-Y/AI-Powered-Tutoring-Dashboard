@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import Header from './Header';
 import ProgressOverview from './ProgressOverview';
-import AIMentor from './AIMentor';
+import AIMentorChat from '../chat/AIMentorChat';
 import SchedulePlanner from './SchedulePlanner';
 import ResourceRecommender from './ResourceRecommender';
 import { BarChart3, MessageCircle, Calendar, BookOpen } from 'lucide-react';
@@ -23,7 +23,7 @@ const Dashboard: React.FC = () => {
       case 'overview':
         return <ProgressOverview />;
       case 'mentor':
-        return <AIMentor />;
+        return <AIMentorChat onBack={() => setActiveTab('overview')} />;
       case 'schedule':
         return <SchedulePlanner />;
       case 'resources':
@@ -32,6 +32,11 @@ const Dashboard: React.FC = () => {
         return <ProgressOverview />;
     }
   };
+
+  // Full-page layout for AI Mentor
+  if (activeTab === 'mentor') {
+    return renderActiveTab();
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

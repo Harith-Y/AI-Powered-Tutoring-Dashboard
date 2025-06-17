@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Send, Bot, User, Lightbulb, Code, Book, ArrowLeft, Sparkles, Clock, Target } from 'lucide-react';
+import { Send, Bot, User, Lightbulb, Code, Book, ArrowLeft, Sparkles, Clock, Target, Brain } from 'lucide-react';
 import { ChatMessage } from '../../types';
 import { addProgress } from '../../services/firestore';
+import { memoryService, MemoryEvent } from '../../services/memoryService';
 import RecommendedResources from './RecommendedResources';
 
 interface AIMentorChatProps {
@@ -16,6 +17,7 @@ const AIMentorChat: React.FC<AIMentorChatProps> = ({ onBack }) => {
   const [isTyping, setIsTyping] = useState(false);
   const [currentQuery, setCurrentQuery] = useState('');
   const [resourceFeedback, setResourceFeedback] = useState<Record<string, boolean>>({});
+  const [memoryContext, setMemoryContext] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -47,7 +49,7 @@ const AIMentorChat: React.FC<AIMentorChatProps> = ({ onBack }) => {
     const completedTopics = userProgress.length;
     const recentTopic = userProgress[0]?.topicName;
     
-    let greeting = `Hi ${name}! 👋 I'm your AI mentor, and I'm excited to help you on your learning journey.\n\n`;
+    let greeting = `Hi ${name}! 👋 I'm your AI mentor with enhanced memory capabilities, and I'm excited to help you on your learning journey.\n\n`;
     
     if (completedTopics > 0) {
       greeting += `I can see you've completed ${completedTopics} topics so far - that's fantastic progress! `;
@@ -62,7 +64,7 @@ const AIMentorChat: React.FC<AIMentorChatProps> = ({ onBack }) => {
       greeting += `I see you're interested in ${userProfile.preferredTopics.slice(0, 3).join(', ')}. `;
     }
     
-    greeting += `What would you like to explore today? I can help with:\n• Explaining concepts\n• Code reviews and debugging\n• Learning path recommendations\n• Practice exercises\n\nJust ask me anything! 🚀`;
+    greeting += `I now remember our past conversations and can provide more consistent, personalized guidance based on your learning history.\n\nWhat would you like to explore today? I can help with:\n• Explaining concepts\n• Code reviews and debugging\n• Learning path recommendations\n• Practice exercises\n\nJust ask me anything! 🚀`;
     
     return greeting;
   };
@@ -116,13 +118,31 @@ const AIMentorChat: React.FC<AIMentorChatProps> = ({ onBack }) => {
     return '';
   };
 
-  const getContextualResponse = (userMessage: string): string => {
+  const getContextualResponse = async (userMessage: string): Promise<string> => {
     const lowerMessage = userMessage.toLowerCase();
     const level = userProfile?.skillLevel || 'beginner';
     const completedTopics = userProgress.length;
     const averageScore = userProgress.length > 0 
       ? userProgress.reduce((acc, p) => acc + p.score, 0) / userProgress.length 
       : 0;
+
+    // Retrieve relevant memories from Pinecone
+    let memoryContextString = '';
+    if (currentUser) {
+      try {
+        const topic = memoryService.extractTopicFromMessage(userMessage);
+        const relevantMemories = await memoryService.retrieveRelevantMemories(
+          currentUser.uid,
+          userMessage,
+          topic,
+          3
+        );
+        memoryContextString = memoryService.formatMemoriesForContext(relevantMemories);
+        setMemoryContext(memoryContextString);
+      } catch (error) {
+        console.error('Error retrieving memories:', error);
+      }
+    }
     
     // Analyze user's question type
     const isConceptQuestion = lowerMessage.includes('what is') || lowerMessage.includes('explain') || lowerMessage.includes('how does');
@@ -132,18 +152,18 @@ const AIMentorChat: React.FC<AIMentorChatProps> = ({ onBack }) => {
     let response = '';
     let suggestedTopic = '';
     
-    // Generate contextual responses based on user's data
+    // Generate contextual responses based on user's data and memory
     if (isProgressQuestion) {
       response = generateProgressResponse();
       suggestedTopic = generateProgressSuggestion();
     } else if (isConceptQuestion) {
-      response = generateConceptResponse(userMessage, level);
+      response = generateConceptResponse(userMessage, level, memoryContextString);
       suggestedTopic = generateConceptSuggestion();
     } else if (isCodeQuestion) {
-      response = generateCodeResponse(userMessage, level);
+      response = generateCodeResponse(userMessage, level, memoryContextString);
       suggestedTopic = generateCodeSuggestion();
     } else {
-      response = generateGeneralResponse(userMessage, level);
+      response = generateGeneralResponse(userMessage, level, memoryContextString);
       suggestedTopic = generateGeneralSuggestion();
     }
     
@@ -157,6 +177,11 @@ const AIMentorChat: React.FC<AIMentorChatProps> = ({ onBack }) => {
       } else {
         response += "let's focus on strengthening your foundation. ";
       }
+    }
+
+    // Add memory context if available
+    if (memoryContextString) {
+      response += `\n\n🧠 **Building on our previous conversations:** I remember we've discussed similar topics before, which helps me provide more consistent guidance tailored to your learning journey.`;
     }
     
     return `${response}\n\n💡 **Suggested next step:** ${suggestedTopic}`;
@@ -174,28 +199,46 @@ const AIMentorChat: React.FC<AIMentorChatProps> = ({ onBack }) => {
     return `You've made excellent progress with ${completedTopics} completed topics! Looking at your learning pattern, you have ${weeklyTasks} tasks remaining this week. As a ${level} learner, I suggest focusing on practical application of what you've learned.`;
   };
 
-  const generateConceptResponse = (message: string, level: string): string => {
+  const generateConceptResponse = (message: string, level: string, memoryContext: string): string => {
     const responses = {
       beginner: "Let me explain this in simple terms with a practical example. Think of it like...",
       intermediate: "This is a great concept to master! Here's how it works and why it's important...",
       advanced: "Excellent question! Let's dive into the technical details and explore some advanced patterns..."
     };
     
-    return responses[level as keyof typeof responses] || responses.beginner;
+    let baseResponse = responses[level as keyof typeof responses] || responses.beginner;
+    
+    if (memoryContext) {
+      baseResponse += " I notice we've touched on related topics before, so I can build on that foundation.";
+    }
+    
+    return baseResponse;
   };
 
-  const generateCodeResponse = (message: string, level: string): string => {
+  const generateCodeResponse = (message: string, level: string, memoryContext: string): string => {
     const responses = {
       beginner: "Let's break this down step by step. I'll show you a simple example and explain each part...",
       intermediate: "Good question! Here's how you can approach this, along with some best practices...",
       advanced: "Let's explore this with a comprehensive example, including edge cases and optimization techniques..."
     };
     
-    return responses[level as keyof typeof responses] || responses.beginner;
+    let baseResponse = responses[level as keyof typeof responses] || responses.beginner;
+    
+    if (memoryContext) {
+      baseResponse += " Based on our previous coding discussions, I can tailor this explanation to your experience level.";
+    }
+    
+    return baseResponse;
   };
 
-  const generateGeneralResponse = (message: string, level: string): string => {
-    return `That's a thoughtful question! Based on your ${level} level, let me provide you with a tailored explanation that builds on what you already know.`;
+  const generateGeneralResponse = (message: string, level: string, memoryContext: string): string => {
+    let baseResponse = `That's a thoughtful question! Based on your ${level} level, let me provide you with a tailored explanation that builds on what you already know.`;
+    
+    if (memoryContext) {
+      baseResponse += " I can see how this connects to our previous conversations, which helps me give you more relevant guidance.";
+    }
+    
+    return baseResponse;
   };
 
   const generateProgressSuggestion = (): string => {
@@ -245,10 +288,12 @@ const AIMentorChat: React.FC<AIMentorChatProps> = ({ onBack }) => {
     setCurrentQuery(searchQuery);
 
     // Simulate AI thinking time
-    setTimeout(() => {
+    setTimeout(async () => {
+      const aiResponseContent = await getContextualResponse(currentMessage);
+      
       const aiResponse: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        content: getContextualResponse(currentMessage),
+        content: aiResponseContent,
         sender: 'ai',
         timestamp: new Date(),
         adaptedToLevel: true
@@ -256,6 +301,30 @@ const AIMentorChat: React.FC<AIMentorChatProps> = ({ onBack }) => {
 
       setMessages(prev => [...prev, aiResponse]);
       setIsTyping(false);
+
+      // Store this interaction in Pinecone for future reference
+      if (currentUser && userProfile) {
+        try {
+          const topic = memoryService.extractTopicFromMessage(currentMessage);
+          const sentiment = memoryService.extractSentiment(currentMessage);
+          
+          const memoryEvent: MemoryEvent = {
+            userId: currentUser.uid,
+            question: currentMessage,
+            topic: topic,
+            response: aiResponseContent,
+            skillLevel: userProfile.skillLevel,
+            category: topic,
+            sentiment: sentiment,
+            difficulty: userProfile.skillLevel
+          };
+
+          await memoryService.storeMemory(memoryEvent);
+          console.log('Interaction stored in memory system');
+        } catch (error) {
+          console.error('Error storing memory:', error);
+        }
+      }
 
       // Track interaction as progress (optional)
       if (currentUser && Math.random() > 0.7) { // 30% chance to log as learning activity
@@ -317,9 +386,10 @@ const AIMentorChat: React.FC<AIMentorChatProps> = ({ onBack }) => {
                 <h1 className="text-xl font-semibold text-gray-900 flex items-center">
                   AI Mentor
                   <Sparkles className="w-5 h-5 text-indigo-500 ml-2" />
+                  <Brain className="w-5 h-5 text-purple-500 ml-1" />
                 </h1>
                 <p className="text-sm text-gray-500">
-                  Personalized for {userProfile?.skillLevel} level • {userProgress.length} topics completed • RAG-powered
+                  Personalized for {userProfile?.skillLevel} level • {userProgress.length} topics completed • Memory-enhanced • RAG-powered
                 </p>
               </div>
             </div>
@@ -330,6 +400,12 @@ const AIMentorChat: React.FC<AIMentorChatProps> = ({ onBack }) => {
               <Clock className="w-4 h-4 mr-1" />
               <span>Always available</span>
             </div>
+            {memoryContext && (
+              <div className="flex items-center text-purple-600">
+                <Brain className="w-4 h-4 mr-1" />
+                <span>Memory active</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -387,6 +463,11 @@ const AIMentorChat: React.FC<AIMentorChatProps> = ({ onBack }) => {
                               ✨ Adapted to your level
                             </span>
                           )}
+                          {message.sender === 'ai' && memoryContext && (
+                            <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
+                              🧠 Memory-enhanced
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -417,7 +498,7 @@ const AIMentorChat: React.FC<AIMentorChatProps> = ({ onBack }) => {
                         <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
                         <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                       </div>
-                      <span className="text-sm text-gray-500">AI is thinking and searching resources...</span>
+                      <span className="text-sm text-gray-500">AI is thinking, searching resources, and accessing memory...</span>
                     </div>
                   </div>
                 </div>
@@ -472,7 +553,7 @@ const AIMentorChat: React.FC<AIMentorChatProps> = ({ onBack }) => {
               </button>
             </div>
             <p className="text-xs text-gray-500 mt-2 text-center">
-              AI responses are personalized and include RAG-powered resource recommendations
+              AI responses are personalized, memory-enhanced, and include RAG-powered resource recommendations
             </p>
           </div>
         </div>

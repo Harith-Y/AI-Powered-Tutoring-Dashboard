@@ -24,24 +24,35 @@ const Dashboard: React.FC = () => {
     { id: 'resources', label: 'Resources', icon: BookOpen, color: 'from-green-500 to-emerald-500' },
   ];
 
+  const handleNavigation = (tabId: string) => {
+    console.log('Navigating to:', tabId);
+    setActiveTab(tabId);
+  };
+
   const renderActiveTab = () => {
-    switch (activeTab) {
-      case 'landing':
-        return <LandingScreen onNavigate={setActiveTab} />;
-      case 'overview':
-        return <ProgressOverview />;
-      case 'progress':
-        return <ProgressDashboard />;
-      case 'mentor':
-        return <AIMentorChat onBack={() => setActiveTab('landing')} />;
-      case 'planner':
-        return <AIWeeklyPlanner />;
-      case 'schedule':
-        return <SchedulePlanner />;
-      case 'resources':
-        return <ResourceRecommender />;
-      default:
-        return <LandingScreen onNavigate={setActiveTab} />;
+    try {
+      switch (activeTab) {
+        case 'landing':
+          return <LandingScreen onNavigate={handleNavigation} />;
+        case 'overview':
+          return <ProgressOverview />;
+        case 'progress':
+          return <ProgressDashboard />;
+        case 'mentor':
+          return <AIMentorChat onBack={() => handleNavigation('landing')} />;
+        case 'planner':
+          return <AIWeeklyPlanner />;
+        case 'schedule':
+          return <SchedulePlanner />;
+        case 'resources':
+          return <ResourceRecommender />;
+        default:
+          return <LandingScreen onNavigate={handleNavigation} />;
+      }
+    } catch (error) {
+      console.error('Error rendering tab:', error);
+      // Fallback to landing screen
+      return <LandingScreen onNavigate={handleNavigation} />;
     }
   };
 
@@ -86,7 +97,7 @@ const Dashboard: React.FC = () => {
                 return (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
+                    onClick={() => handleNavigation(tab.id)}
                     className={`flex items-center px-6 py-4 font-semibold text-sm whitespace-nowrap rounded-xl transition-all duration-300 relative overflow-hidden group ${
                       isActive
                         ? 'text-white shadow-lg transform scale-105'
@@ -116,7 +127,7 @@ const Dashboard: React.FC = () => {
 
       {/* Floating Action Button */}
       <button
-        onClick={() => setActiveTab('mentor')}
+        onClick={() => handleNavigation('mentor')}
         className="fab group"
         title="Open AI Mentor"
       >

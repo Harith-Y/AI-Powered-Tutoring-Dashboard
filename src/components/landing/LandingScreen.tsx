@@ -177,12 +177,11 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onNavigate }) => {
 
   const nextTourStep = () => {
     if (tourStep < demoActions.length - 1) {
-      setTourStep(tourStep + 1);
-      setActiveTooltip(demoActions[tourStep + 1].id);
+      const nextStep = tourStep + 1;
+      setTourStep(nextStep);
+      setActiveTooltip(demoActions[nextStep].id);
     } else {
-      setShowTour(false);
-      setActiveTooltip(null);
-      setTourStep(0);
+      closeTour();
     }
   };
 
@@ -192,16 +191,33 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onNavigate }) => {
     setTourStep(0);
   };
 
-  useEffect(() => {
-    // Auto-start tour after 2 seconds for demo purposes
-    const timer = setTimeout(() => {
-      if (!showTour) {
-        startTour();
+  const handleActionClick = (action: typeof demoActions[0]) => {
+    if (showTour) {
+      nextTourStep();
+    } else {
+      // Ensure we have a valid navigation function
+      if (typeof onNavigate === 'function') {
+        try {
+          action.action();
+        } catch (error) {
+          console.error('Navigation error:', error);
+          // Fallback navigation
+          onNavigate('overview');
+        }
       }
-    }, 2000);
+    }
+  };
 
-    return () => clearTimeout(timer);
-  }, []);
+  // Remove auto-start tour to prevent issues
+  // useEffect(() => {
+  //   const timer = setTimeout(() => {
+  //     if (!showTour) {
+  //       startTour();
+  //     }
+  //   }, 2000);
+
+  //   return () => clearTimeout(timer);
+  // }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 relative overflow-hidden">
@@ -286,13 +302,7 @@ const LandingScreen: React.FC<LandingScreenProps> = ({ onNavigate }) => {
                   className={`card hover-lift group cursor-pointer transition-all duration-300 ${
                     isActive ? 'ring-4 ring-indigo-300 ring-opacity-50 scale-105' : ''
                   }`}
-                  onClick={() => {
-                    if (showTour) {
-                      nextTourStep();
-                    } else {
-                      action.action();
-                    }
-                  }}
+                  onClick={() => handleActionClick(action)}
                 >
                   <div className="p-8">
                     <div className={`w-16 h-16 bg-gradient-to-br ${action.gradient} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg`}>

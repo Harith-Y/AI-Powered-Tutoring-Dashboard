@@ -54,54 +54,75 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   const login = async (email: string, password: string) => {
-    await signInWithEmailAndPassword(auth, email, password);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
   };
 
   const signup = async (email: string, password: string, displayName: string) => {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    
-    // Update Firebase Auth profile
-    await updateProfile(userCredential.user, { displayName });
-    
-    // Create user profile in Firestore
-    const newUserProfile: Omit<User, 'id' | 'createdAt' | 'lastLoginAt'> = {
-      email: email,
-      displayName: displayName,
-      skillLevel: 'beginner',
-      learningGoals: [],
-      preferredTopics: [],
-      learningStyle: 'visual'
-    };
-    
-    await createUserProfile(userCredential.user.uid, newUserProfile);
-    
-    // Create default preferences
-    const defaultPreferences: UserPreferences = {
-      preferredTopics: [],
-      difficultyLevel: 'beginner',
-      availableTimePerDay: 60, // 1 hour
-      learningStyle: 'visual',
-      studyDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
-      preferredStudyTime: 'evening',
-      notifications: true
-    };
-    
-    await updateUserPreferences(userCredential.user.uid, defaultPreferences);
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      
+      // Update Firebase Auth profile
+      await updateProfile(userCredential.user, { displayName });
+      
+      // Create user profile in Firestore
+      const newUserProfile: Omit<User, 'id' | 'createdAt' | 'lastLoginAt'> = {
+        email: email,
+        displayName: displayName,
+        skillLevel: 'beginner',
+        learningGoals: [],
+        preferredTopics: [],
+        learningStyle: 'visual'
+      };
+      
+      await createUserProfile(userCredential.user.uid, newUserProfile);
+      
+      // Create default preferences
+      const defaultPreferences: UserPreferences = {
+        preferredTopics: [],
+        difficultyLevel: 'beginner',
+        availableTimePerDay: 60, // 1 hour
+        learningStyle: 'visual',
+        studyDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+        preferredStudyTime: 'evening',
+        notifications: true
+      };
+      
+      await updateUserPreferences(userCredential.user.uid, defaultPreferences);
+    } catch (error) {
+      console.error('Signup error:', error);
+      throw error;
+    }
   };
 
   const logout = async () => {
-    await signOut(auth);
-    setUserProfile(null);
-    setUserPreferences(null);
-    setUserProgress([]);
-    setWeeklyPlan([]);
-    setWeeklyStats(null);
+    try {
+      await signOut(auth);
+      // Clear state immediately
+      setUserProfile(null);
+      setUserPreferences(null);
+      setUserProgress([]);
+      setWeeklyPlan([]);
+      setWeeklyStats(null);
+    } catch (error) {
+      console.error('Logout error:', error);
+      throw error;
+    }
   };
 
   const updatePreferences = async (preferences: UserPreferences) => {
     if (!currentUser) return;
-    await updateUserPreferences(currentUser.uid, preferences);
-    setUserPreferences(preferences);
+    try {
+      await updateUserPreferences(currentUser.uid, preferences);
+      setUserPreferences(preferences);
+    } catch (error) {
+      console.error('Update preferences error:', error);
+      throw error;
+    }
   };
 
   const loadUserData = async (user: FirebaseUser) => {
@@ -138,6 +159,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
     } catch (error) {
       console.error('Error loading user data:', error);
+      return undefined;
     }
   };
 
@@ -145,28 +167,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let unsubscribeData: (() => void) | undefined;
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
-      
-      if (user) {
-        // Update last login time
-        await updateUserProfile(user.uid, { lastLoginAt: new Date() });
+      try {
+        setCurrentUser(user);
         
-        // Load user data and set up listeners
-        unsubscribeData = await loadUserData(user);
-      } else {
-        // Clean up data when user logs out
-        setUserProfile(null);
-        setUserPreferences(null);
-        setUserProgress([]);
-        setWeeklyPlan([]);
-        setWeeklyStats(null);
-        
-        if (unsubscribeData) {
-          unsubscribeData();
+        if (user) {
+          // Update last login time
+          await updateUserProfile(user.uid, { lastLoginAt: new Date() });
+          
+          // Load user data and set up listeners
+          unsubscribeData = await loadUserData(user);
+        } else {
+          // Clean up data when user logs out
+          setUserProfile(null);
+          setUserPreferences(null);
+          setUserProgress([]);
+          setWeeklyPlan([]);
+          setWeeklyStats(null);
+          
+          if (unsubscribeData) {
+            unsubscribeData();
+            unsubscribeData = undefined;
+          }
         }
+      } catch (error) {
+        console.error('Auth state change error:', error);
+      } finally {
+        setLoading(false);
       }
-      
-      setLoading(false);
     });
 
     return () => {

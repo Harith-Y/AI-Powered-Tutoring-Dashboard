@@ -74,8 +74,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: email,
         displayName: displayName,
         skillLevel: 'beginner',
-        learningGoals: [],
-        preferredTopics: [],
+        learningGoals: ['Master React fundamentals', 'Learn TypeScript', 'Build portfolio projects'],
+        preferredTopics: ['JavaScript', 'React', 'CSS'],
         learningStyle: 'visual'
       };
       
@@ -83,7 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Create default preferences
       const defaultPreferences: UserPreferences = {
-        preferredTopics: [],
+        preferredTopics: ['JavaScript', 'React', 'CSS'],
         difficultyLevel: 'beginner',
         availableTimePerDay: 60, // 1 hour
         learningStyle: 'visual',
@@ -220,7 +220,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 };

@@ -131,7 +131,7 @@ const ResourceRecommender: React.FC = () => {
       <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl p-6 text-white">
         <h2 className="text-xl font-semibold mb-2">🤖 AI-Powered Recommendations</h2>
         <p className="text-indigo-100 mb-4">
-          Based on your {userProfile?.skillLevel} level and interests in {userProfile?.preferredTopics.join(', ')}, 
+          Based on your {userProfile?.skillLevel} level and interests in {(userProfile?.preferredTopics || []).join(', ')}, 
           I've curated the best resources for your learning journey.
         </p>
         <div className="flex items-center space-x-4 text-sm">

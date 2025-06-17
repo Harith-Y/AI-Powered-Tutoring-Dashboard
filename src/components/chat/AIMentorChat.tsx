@@ -44,8 +44,8 @@ const AIMentorChat: React.FC = () => {
   const generateGreeting = (): string => {
     const name = userProfile?.displayName || 'there';
     const level = userProfile?.skillLevel || 'beginner';
-    const completedTopics = userProgress.length;
-    const recentTopic = userProgress[0]?.topicName;
+    const completedTopics = userProgress?.length || 0;
+    const recentTopic = userProgress?.[0]?.topicName;
     
     let greeting = `Hi ${name}! 👋 I'm your AI mentor with enhanced memory capabilities, and I'm excited to help you on your learning journey.\n\n`;
     
@@ -58,7 +58,7 @@ const AIMentorChat: React.FC = () => {
     
     greeting += `As a ${level} learner, I'll tailor my explanations and suggestions to match your current skill level.\n\n`;
     
-    if (userProfile?.preferredTopics.length) {
+    if (userProfile?.preferredTopics?.length) {
       greeting += `I see you're interested in ${userProfile.preferredTopics.slice(0, 3).join(', ')}. `;
     }
     
@@ -119,8 +119,8 @@ const AIMentorChat: React.FC = () => {
   const getContextualResponse = async (userMessage: string): Promise<string> => {
     const lowerMessage = userMessage.toLowerCase();
     const level = userProfile?.skillLevel || 'beginner';
-    const completedTopics = userProgress.length;
-    const averageScore = userProgress.length > 0 
+    const completedTopics = userProgress?.length || 0;
+    const averageScore = userProgress && userProgress.length > 0 
       ? userProgress.reduce((acc, p) => acc + p.score, 0) / userProgress.length 
       : 0;
 
@@ -186,12 +186,12 @@ const AIMentorChat: React.FC = () => {
   };
 
   const generateProgressResponse = (): string => {
-    const completedTopics = userProgress.length;
-    const weeklyTasks = weeklyPlan.filter(task => !task.completed).length;
+    const completedTopics = userProgress?.length || 0;
+    const weeklyTasks = weeklyPlan?.filter(task => !task.completed).length || 0;
     const level = userProfile?.skillLevel || 'beginner';
     
     if (completedTopics === 0) {
-      return `Great question! Since you're just starting your journey, I recommend beginning with fundamental concepts in ${userProfile?.preferredTopics[0] || 'programming'}. Let's build a solid foundation first.`;
+      return `Great question! Since you're just starting your journey, I recommend beginning with fundamental concepts in ${userProfile?.preferredTopics?.[0] || 'programming'}. Let's build a solid foundation first.`;
     }
     
     return `You've made excellent progress with ${completedTopics} completed topics! Looking at your learning pattern, you have ${weeklyTasks} tasks remaining this week. As a ${level} learner, I suggest focusing on practical application of what you've learned.`;
@@ -240,7 +240,7 @@ const AIMentorChat: React.FC = () => {
   };
 
   const generateProgressSuggestion = (): string => {
-    const incompleteTasks = weeklyPlan.filter(task => !task.completed);
+    const incompleteTasks = weeklyPlan?.filter(task => !task.completed) || [];
     if (incompleteTasks.length > 0) {
       return `Complete "${incompleteTasks[0].topic}" from your weekly plan`;
     }
@@ -385,7 +385,7 @@ const AIMentorChat: React.FC = () => {
                   <Brain className="w-5 h-5 text-purple-500 ml-1" />
                 </h1>
                 <p className="text-sm text-gray-500">
-                  Personalized for {userProfile?.skillLevel} level • {userProgress.length} topics completed • Memory-enhanced • RAG-powered
+                  Personalized for {userProfile?.skillLevel} level • {userProgress?.length || 0} topics completed • Memory-enhanced • RAG-powered
                 </p>
               </div>
             </div>

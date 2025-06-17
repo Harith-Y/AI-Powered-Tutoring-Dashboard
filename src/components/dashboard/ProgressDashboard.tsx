@@ -42,9 +42,9 @@ const ProgressDashboard: React.FC = () => {
   const [selectedTimeframe, setSelectedTimeframe] = useState<'week' | 'month' | 'all'>('week');
   const [showLeaderboard, setShowLeaderboard] = useState(true);
 
-  // Calculate progress metrics
-  const totalTopics = userProgress.length;
-  const weeklyGoal = userProfile?.learningGoals.length || 5;
+  // Calculate progress metrics with safe property access
+  const totalTopics = userProgress?.length || 0;
+  const weeklyGoal = userProfile?.learningGoals?.length || 5;
   const completedThisWeek = weeklyStats?.topicsCompleted || 0;
   const weeklyProgress = Math.min(completedThisWeek, weeklyGoal);
   const weeklyPercentage = weeklyGoal > 0 ? Math.round((weeklyProgress / weeklyGoal) * 100) : 0;
@@ -97,8 +97,12 @@ const ProgressDashboard: React.FC = () => {
     }
   ].sort((a, b) => b.totalScore - a.totalScore).map((user, index) => ({ ...user, rank: index + 1 }));
 
-  // Calculate topic-wise progress
+  // Calculate topic-wise progress with safe array access
   const getTopicProgress = (): TopicProgress[] => {
+    if (!userProgress || userProgress.length === 0) {
+      return [];
+    }
+
     const topicMap = new Map<string, Progress[]>();
     
     userProgress.forEach(progress => {
@@ -142,13 +146,13 @@ const ProgressDashboard: React.FC = () => {
 
   const weeklyProgressData = getWeeklyProgressData();
 
-  // Study time distribution
+  // Study time distribution with safe property access
   const getStudyTimeDistribution = () => {
     const categories = userProfile?.preferredTopics || ['JavaScript', 'React', 'CSS'];
     return categories.map(category => {
-      const categoryProgress = userProgress.filter(p => 
+      const categoryProgress = userProgress?.filter(p => 
         p.topicName.toLowerCase().includes(category.toLowerCase())
-      );
+      ) || [];
       const totalTime = categoryProgress.reduce((sum, p) => sum + p.timeSpent, 0);
       
       return {

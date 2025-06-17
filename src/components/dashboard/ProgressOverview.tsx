@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Trophy, Target, Flame, Clock, CheckCircle, BookOpen, TrendingUp } from 'lucide-react';
+import WhatsNext from './WhatsNext';
 
 const ProgressOverview: React.FC = () => {
   const { userProfile, userProgress, weeklyStats, weeklyPlan } = useAuth();
@@ -160,6 +161,9 @@ const ProgressOverview: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* AI Recommendations Section */}
+      <WhatsNext />
 
       {/* Performance Analytics */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">

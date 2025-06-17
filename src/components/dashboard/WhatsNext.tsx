@@ -25,6 +25,16 @@ const WhatsNext: React.FC = () => {
 
     setLoading(true);
     try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !anonKey) {
+        console.warn('Supabase configuration missing. Using fallback recommendations.');
+        setRecommendations(getFallbackRecommendations());
+        setLoading(false);
+        return;
+      }
+
       // Prepare topic history for the ML model
       const topicHistory = userProgress.map(progress => ({
         topicId: progress.topicId,
@@ -36,10 +46,10 @@ const WhatsNext: React.FC = () => {
         completedAt: progress.completedAt.toISOString()
       }));
 
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/topic-recommendations`, {
+      const response = await fetch(`${supabaseUrl}/functions/v1/topic-recommendations`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${anonKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -63,45 +73,45 @@ const WhatsNext: React.FC = () => {
       }
     } catch (error) {
       console.error('Error fetching recommendations:', error);
-      
-      // Fallback recommendations if the API fails
-      const fallbackRecommendations: TopicRecommendation[] = [
-        {
-          topicId: 'react-hooks',
-          topicName: 'React Hooks Deep Dive',
-          category: 'React',
-          difficulty: 'intermediate',
-          estimatedTime: 120,
-          confidence: 0.85,
-          reasoning: 'Based on your React progress, hooks are the next logical step to master modern React development.',
-          prerequisites: ['React Basics']
-        },
-        {
-          topicId: 'javascript-async',
-          topicName: 'Async JavaScript & Promises',
-          category: 'JavaScript',
-          difficulty: 'intermediate',
-          estimatedTime: 90,
-          confidence: 0.78,
-          reasoning: 'Essential for modern web development and API integration.',
-          prerequisites: ['JavaScript Fundamentals']
-        },
-        {
-          topicId: 'css-grid',
-          topicName: 'CSS Grid Layout',
-          category: 'CSS',
-          difficulty: 'intermediate',
-          estimatedTime: 75,
-          confidence: 0.72,
-          reasoning: 'Perfect for creating complex, responsive layouts efficiently.',
-          prerequisites: ['CSS Basics', 'Flexbox']
-        }
-      ];
-      
-      setRecommendations(fallbackRecommendations);
+      setRecommendations(getFallbackRecommendations());
     } finally {
       setLoading(false);
     }
+  };
+
+  const getFallbackRecommendations = (): TopicRecommendation[] => {
+    return [
+      {
+        topicId: 'react-hooks',
+        topicName: 'React Hooks Deep Dive',
+        category: 'React',
+        difficulty: 'intermediate',
+        estimatedTime: 120,
+        confidence: 0.85,
+        reasoning: 'Based on your React progress, hooks are the next logical step to master modern React development.',
+        prerequisites: ['React Basics']
+      },
+      {
+        topicId: 'javascript-async',
+        topicName: 'Async JavaScript & Promises',
+        category: 'JavaScript',
+        difficulty: 'intermediate',
+        estimatedTime: 90,
+        confidence: 0.78,
+        reasoning: 'Essential for modern web development and API integration.',
+        prerequisites: ['JavaScript Fundamentals']
+      },
+      {
+        topicId: 'css-grid',
+        topicName: 'CSS Grid Layout',
+        category: 'CSS',
+        difficulty: 'intermediate',
+        estimatedTime: 75,
+        confidence: 0.72,
+        reasoning: 'Perfect for creating complex, responsive layouts efficiently.',
+        prerequisites: ['CSS Basics', 'Flexbox']
+      }
+    ];
   };
 
   useEffect(() => {

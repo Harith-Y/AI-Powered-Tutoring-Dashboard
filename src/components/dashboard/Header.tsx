@@ -5,7 +5,7 @@ import SettingsModal from '../settings/SettingsModal';
 import ProfileModal from '../profile/ProfileModal';
 
 const Header: React.FC = () => {
-  const { userProfile, logout } = useAuth();
+  const { currentUser, userProfile, logout } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -26,6 +26,10 @@ const Header: React.FC = () => {
   ];
 
   const unreadCount = notifications.filter(n => n.unread).length;
+
+  // Get display name and email from either userProfile or currentUser
+  const displayName = userProfile?.displayName || currentUser?.displayName || 'User';
+  const email = userProfile?.email || currentUser?.email || '';
 
   return (
     <>
@@ -113,9 +117,9 @@ const Header: React.FC = () => {
               {/* User Profile */}
               <div className="flex items-center space-x-3">
                 <div className="hidden sm:block text-right">
-                  <p className="text-sm font-semibold text-gray-900">{userProfile?.displayName}</p>
+                  <p className="text-sm font-semibold text-gray-900">{displayName}</p>
                   <div className="flex items-center space-x-1">
-                    <span className="text-xs text-gray-500 capitalize">{userProfile?.skillLevel}</span>
+                    <span className="text-xs text-gray-500 capitalize">{userProfile?.skillLevel || 'beginner'}</span>
                     <Sparkles className="w-3 h-3 text-indigo-500" />
                   </div>
                 </div>
@@ -134,8 +138,8 @@ const Header: React.FC = () => {
                   {showUserMenu && (
                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50">
                       <div className="px-4 py-2 border-b border-gray-100">
-                        <p className="font-semibold text-gray-900">{userProfile?.displayName}</p>
-                        <p className="text-sm text-gray-500">{userProfile?.email}</p>
+                        <p className="font-semibold text-gray-900">{displayName}</p>
+                        <p className="text-sm text-gray-500">{email}</p>
                       </div>
                       
                       <button 

@@ -8,10 +8,14 @@ interface ProfileModalProps {
 }
 
 const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
-  const { userProfile, userProgress = [], weeklyStats } = useAuth();
+  const { currentUser, userProfile, userProgress = [], weeklyStats } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
 
   if (!isOpen) return null;
+
+  // Get display name and email from either userProfile or currentUser
+  const displayName = userProfile?.displayName || currentUser?.displayName || 'User';
+  const email = userProfile?.email || currentUser?.email || '';
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: BookOpen },
@@ -98,14 +102,14 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
       <div className="text-center">
         <div className="w-24 h-24 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
           <span className="text-3xl font-bold text-white">
-            {userProfile?.displayName?.charAt(0).toUpperCase()}
+            {displayName.charAt(0).toUpperCase()}
           </span>
         </div>
-        <h2 className="text-2xl font-bold text-gray-900">{userProfile?.displayName}</h2>
-        <p className="text-gray-600">{userProfile?.email}</p>
+        <h2 className="text-2xl font-bold text-gray-900">{displayName}</h2>
+        <p className="text-gray-600">{email}</p>
         <div className="mt-2">
           <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800 capitalize">
-            {userProfile?.skillLevel} Level
+            {userProfile?.skillLevel || 'beginner'} Level
           </span>
         </div>
       </div>
@@ -137,7 +141,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
           <div className="p-4 bg-gray-50 rounded-lg">
             <h4 className="font-medium text-gray-900 mb-2">Preferred Topics</h4>
             <div className="flex flex-wrap gap-2">
-              {userProfile?.preferredTopics?.map((topic, index) => (
+              {(userProfile?.preferredTopics || ['JavaScript', 'React', 'CSS']).map((topic, index) => (
                 <span key={index} className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-sm">
                   {topic}
                 </span>
@@ -146,7 +150,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
           </div>
           <div className="p-4 bg-gray-50 rounded-lg">
             <h4 className="font-medium text-gray-900 mb-2">Learning Style</h4>
-            <span className="capitalize text-gray-700">{userProfile?.learningStyle}</span>
+            <span className="capitalize text-gray-700">{userProfile?.learningStyle || 'visual'}</span>
           </div>
         </div>
       </div>
@@ -154,23 +158,31 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
       {/* Recent Activity */}
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
-        <div className="space-y-3">
-          {userProgress.slice(0, 5).map((progress, index) => (
-            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                <div>
-                  <p className="font-medium text-gray-900">{progress.topicName}</p>
-                  <p className="text-sm text-gray-600">{progress.category}</p>
+        {userProgress.length > 0 ? (
+          <div className="space-y-3">
+            {userProgress.slice(0, 5).map((progress, index) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                  <div>
+                    <p className="font-medium text-gray-900">{progress.topicName}</p>
+                    <p className="text-sm text-gray-600">{progress.category}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-medium text-gray-900">{progress.score}%</div>
+                  <div className="text-xs text-gray-500">{progress.completedAt.toLocaleDateString()}</div>
                 </div>
               </div>
-              <div className="text-right">
-                <div className="text-sm font-medium text-gray-900">{progress.score}%</div>
-                <div className="text-xs text-gray-500">{progress.completedAt.toLocaleDateString()}</div>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500">No learning activity yet</p>
+            <p className="text-sm text-gray-400 mt-1">Start learning to see your progress here</p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -182,25 +194,33 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
           Earned Achievements ({earnedAchievements.length})
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {earnedAchievements.map((achievement) => (
-            <div key={achievement.id} className="p-4 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg">
-              <div className="flex items-start space-x-3">
-                <div className="text-3xl">{achievement.icon}</div>
-                <div className="flex-1">
-                  <h4 className="font-semibold text-gray-900">{achievement.name}</h4>
-                  <p className="text-sm text-gray-600 mb-2">{achievement.description}</p>
-                  {achievement.earnedDate && (
-                    <p className="text-xs text-yellow-700">
-                      Earned on {achievement.earnedDate.toLocaleDateString()}
-                    </p>
-                  )}
+        {earnedAchievements.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {earnedAchievements.map((achievement) => (
+              <div key={achievement.id} className="p-4 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg">
+                <div className="flex items-start space-x-3">
+                  <div className="text-3xl">{achievement.icon}</div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-gray-900">{achievement.name}</h4>
+                    <p className="text-sm text-gray-600 mb-2">{achievement.description}</p>
+                    {achievement.earnedDate && (
+                      <p className="text-xs text-yellow-700">
+                        Earned on {achievement.earnedDate.toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                  <Trophy className="w-5 h-5 text-yellow-600" />
                 </div>
-                <Trophy className="w-5 h-5 text-yellow-600" />
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <Trophy className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500">No achievements earned yet</p>
+            <p className="text-sm text-gray-400 mt-1">Complete topics to unlock achievements</p>
+          </div>
+        )}
       </div>
 
       {/* Upcoming Achievements */}
@@ -253,35 +273,43 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
       {/* Category Breakdown */}
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Performance by Category</h3>
-        <div className="space-y-4">
-          {Object.entries(categoryStats).map(([category, stats]) => {
-            const avgScore = stats.totalScore / stats.count;
-            const avgTime = stats.totalTime / stats.count;
-            
-            return (
-              <div key={category} className="p-4 bg-white border border-gray-200 rounded-lg">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-semibold text-gray-900">{category}</h4>
-                  <span className="text-sm text-gray-500">{stats.count} topics</span>
+        {Object.keys(categoryStats).length > 0 ? (
+          <div className="space-y-4">
+            {Object.entries(categoryStats).map(([category, stats]) => {
+              const avgScore = stats.totalScore / stats.count;
+              const avgTime = stats.totalTime / stats.count;
+              
+              return (
+                <div key={category} className="p-4 bg-white border border-gray-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-semibold text-gray-900">{category}</h4>
+                    <span className="text-sm text-gray-500">{stats.count} topics</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <div className="text-gray-600">Avg Score</div>
+                      <div className="font-semibold text-emerald-600">{Math.round(avgScore)}%</div>
+                    </div>
+                    <div>
+                      <div className="text-gray-600">Avg Time</div>
+                      <div className="font-semibold text-blue-600">{Math.round(avgTime)} min</div>
+                    </div>
+                    <div>
+                      <div className="text-gray-600">Total Time</div>
+                      <div className="font-semibold text-orange-600">{Math.round(stats.totalTime / 60)}h</div>
+                    </div>
+                  </div>
                 </div>
-                <div className="grid grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <div className="text-gray-600">Avg Score</div>
-                    <div className="font-semibold text-emerald-600">{Math.round(avgScore)}%</div>
-                  </div>
-                  <div>
-                    <div className="text-gray-600">Avg Time</div>
-                    <div className="font-semibold text-blue-600">{Math.round(avgTime)} min</div>
-                  </div>
-                  <div>
-                    <div className="text-gray-600">Total Time</div>
-                    <div className="font-semibold text-orange-600">{Math.round(stats.totalTime / 60)}h</div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <Star className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500">No statistics available yet</p>
+            <p className="text-sm text-gray-400 mt-1">Complete topics to see detailed statistics</p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -290,32 +318,40 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Learning Goals</h3>
-        <div className="space-y-4">
-          {userProfile?.learningGoals?.map((goal, index) => (
-            <div key={index} className="p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-start space-x-3">
-                <div className="w-6 h-6 bg-indigo-100 rounded-full flex items-center justify-center mt-1">
-                  <Target className="w-4 h-4 text-indigo-600" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-medium text-gray-900">{goal}</h4>
-                  <div className="mt-2">
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-indigo-500 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${Math.min(Math.random() * 100, 100)}%` }}
-                      ></div>
-                    </div>
-                    <div className="flex justify-between text-xs text-gray-500 mt-1">
-                      <span>In Progress</span>
-                      <span>{Math.round(Math.random() * 100)}% Complete</span>
+        {userProfile?.learningGoals && userProfile.learningGoals.length > 0 ? (
+          <div className="space-y-4">
+            {userProfile.learningGoals.map((goal, index) => (
+              <div key={index} className="p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-start space-x-3">
+                  <div className="w-6 h-6 bg-indigo-100 rounded-full flex items-center justify-center mt-1">
+                    <Target className="w-4 h-4 text-indigo-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-medium text-gray-900">{goal}</h4>
+                    <div className="mt-2">
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-indigo-500 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${Math.min(Math.random() * 100, 100)}%` }}
+                        ></div>
+                      </div>
+                      <div className="flex justify-between text-xs text-gray-500 mt-1">
+                        <span>In Progress</span>
+                        <span>{Math.round(Math.random() * 100)}% Complete</span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <Target className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500">No learning goals set yet</p>
+            <p className="text-sm text-gray-400 mt-1">Set goals to track your progress</p>
+          </div>
+        )}
       </div>
 
       <div>

@@ -47,16 +47,16 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       setIsDark(shouldBeDark);
 
-      // Apply theme to document root
+      // Apply theme to document root and body
       const root = document.documentElement;
+      const body = document.body;
       
       if (shouldBeDark) {
         root.classList.add('dark');
-        // Also apply to body for immediate visual feedback
-        document.body.classList.add('dark');
+        body.classList.add('dark');
       } else {
         root.classList.remove('dark');
-        document.body.classList.remove('dark');
+        body.classList.remove('dark');
       }
 
       // Apply accent color CSS variables
@@ -74,9 +74,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       root.style.setProperty('--color-primary-light', colors.secondary);
 
       // Force a repaint to ensure changes are applied immediately
-      root.style.display = 'none';
-      root.offsetHeight; // Trigger reflow
-      root.style.display = '';
+      void root.offsetHeight; // Trigger reflow
     };
 
     updateTheme();
@@ -90,20 +88,44 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [theme, accentColor]);
 
-  // Initial theme application on mount
+  // Apply initial theme on mount
   useEffect(() => {
     const root = document.documentElement;
     const body = document.body;
     
-    // Ensure theme classes are applied immediately
-    if (isDark) {
+    // Determine initial theme
+    let shouldBeDark = false;
+    if (theme === 'dark') {
+      shouldBeDark = true;
+    } else if (theme === 'auto') {
+      shouldBeDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+
+    setIsDark(shouldBeDark);
+    
+    // Apply theme classes immediately
+    if (shouldBeDark) {
       root.classList.add('dark');
       body.classList.add('dark');
     } else {
       root.classList.remove('dark');
       body.classList.remove('dark');
     }
-  }, [isDark]);
+
+    // Apply accent color
+    const colorMap = {
+      indigo: { primary: '99 102 241', secondary: '129 140 248' },
+      blue: { primary: '59 130 246', secondary: '96 165 250' },
+      purple: { primary: '147 51 234', secondary: '168 85 247' },
+      pink: { primary: '236 72 153', secondary: '244 114 182' },
+      emerald: { primary: '16 185 129', secondary: '52 211 153' },
+      orange: { primary: '249 115 22', secondary: '251 146 60' }
+    };
+
+    const colors = colorMap[accentColor];
+    root.style.setProperty('--color-primary', colors.primary);
+    root.style.setProperty('--color-primary-light', colors.secondary);
+  }, []); // Only run on mount
 
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);

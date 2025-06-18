@@ -1,10 +1,12 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { BarChart3, MessageCircle, Calendar, BookOpen, Brain, TrendingUp, Sparkles, Home } from 'lucide-react';
 
 const Navigation: React.FC = () => {
   const { userProfile } = useAuth();
+  const { isDark } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -28,10 +30,14 @@ const Navigation: React.FC = () => {
       <div className="mb-6 sm:mb-8">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
           <div className="flex-1">
-            <h1 className="text-responsive-lg font-bold text-gray-900 mb-2">
+            <h1 className={`text-responsive-lg font-bold mb-2 transition-colors ${
+              isDark ? 'text-gray-100' : 'text-gray-900'
+            }`}>
               Welcome back, <span className="gradient-text">{userProfile?.displayName}</span>!
             </h1>
-            <p className="text-base sm:text-lg text-gray-600 flex flex-col sm:flex-row sm:items-center">
+            <p className={`text-base sm:text-lg flex flex-col sm:flex-row sm:items-center transition-colors ${
+              isDark ? 'text-gray-300' : 'text-gray-600'
+            }`}>
               <span>Continue your learning journey with personalized AI guidance</span>
               <Sparkles className="w-5 h-5 text-indigo-500 mt-1 sm:mt-0 sm:ml-2 self-start sm:self-auto" />
             </p>
@@ -46,7 +52,11 @@ const Navigation: React.FC = () => {
       </div>
 
       {/* Tab Navigation */}
-      <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg border border-gray-100 p-1 sm:p-2">
+      <div className={`rounded-xl sm:rounded-2xl shadow-lg border p-1 sm:p-2 transition-colors ${
+        isDark 
+          ? 'bg-gray-800 border-gray-700' 
+          : 'bg-white border-gray-100'
+      }`}>
         <div className="flex overflow-x-auto scrollbar-hide">
           {tabs.map((tab) => {
             const Icon = tab.icon;
@@ -58,7 +68,9 @@ const Navigation: React.FC = () => {
                 className={`flex items-center px-3 py-2 sm:px-6 sm:py-4 font-semibold text-xs sm:text-sm whitespace-nowrap rounded-lg sm:rounded-xl transition-all duration-300 relative overflow-hidden group flex-shrink-0 touch-target ${
                   isActive
                     ? 'text-white shadow-lg transform scale-105'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    : isDark 
+                      ? 'text-gray-300 hover:text-gray-100 hover:bg-gray-700'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                 }`}
               >
                 {isActive && (

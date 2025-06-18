@@ -47,15 +47,19 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       setIsDark(shouldBeDark);
 
-      // Apply theme to document
+      // Apply theme to document root
+      const root = document.documentElement;
+      
       if (shouldBeDark) {
-        document.documentElement.classList.add('dark');
+        root.classList.add('dark');
+        // Also apply to body for immediate visual feedback
+        document.body.classList.add('dark');
       } else {
-        document.documentElement.classList.remove('dark');
+        root.classList.remove('dark');
+        document.body.classList.remove('dark');
       }
 
       // Apply accent color CSS variables
-      const root = document.documentElement;
       const colorMap = {
         indigo: { primary: '99 102 241', secondary: '129 140 248' },
         blue: { primary: '59 130 246', secondary: '96 165 250' },
@@ -68,6 +72,11 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const colors = colorMap[accentColor];
       root.style.setProperty('--color-primary', colors.primary);
       root.style.setProperty('--color-primary-light', colors.secondary);
+
+      // Force a repaint to ensure changes are applied immediately
+      root.style.display = 'none';
+      root.offsetHeight; // Trigger reflow
+      root.style.display = '';
     };
 
     updateTheme();
@@ -75,10 +84,26 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Listen for system theme changes when in auto mode
     if (theme === 'auto') {
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      mediaQuery.addEventListener('change', updateTheme);
-      return () => mediaQuery.removeEventListener('change', updateTheme);
+      const handleChange = () => updateTheme();
+      mediaQuery.addEventListener('change', handleChange);
+      return () => mediaQuery.removeEventListener('change', handleChange);
     }
   }, [theme, accentColor]);
+
+  // Initial theme application on mount
+  useEffect(() => {
+    const root = document.documentElement;
+    const body = document.body;
+    
+    // Ensure theme classes are applied immediately
+    if (isDark) {
+      root.classList.add('dark');
+      body.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+      body.classList.remove('dark');
+    }
+  }, [isDark]);
 
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);

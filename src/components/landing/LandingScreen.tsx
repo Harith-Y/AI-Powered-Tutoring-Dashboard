@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { 
   Brain, 
   MessageCircle, 
@@ -77,6 +78,7 @@ const Tooltip: React.FC<TooltipProps> = ({
 
 const LandingScreen: React.FC = () => {
   const { userProfile, userProgress = [], weeklyStats } = useAuth();
+  const { isDark } = useTheme();
   const navigate = useNavigate();
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
   const [tourStep, setTourStep] = useState(0);
@@ -203,12 +205,22 @@ const LandingScreen: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 relative overflow-hidden">
+    <div className={`min-h-screen relative overflow-hidden transition-colors duration-300 ${
+      isDark 
+        ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900' 
+        : 'bg-gradient-to-br from-indigo-50 via-white to-purple-50'
+    }`}>
       {/* Background Elements */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-indigo-200/30 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-200/30 rounded-full blur-3xl"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-pink-200/20 rounded-full blur-3xl"></div>
+        <div className={`absolute -top-40 -right-40 w-80 h-80 rounded-full blur-3xl transition-colors ${
+          isDark ? 'bg-indigo-500/20' : 'bg-indigo-200/30'
+        }`}></div>
+        <div className={`absolute -bottom-40 -left-40 w-80 h-80 rounded-full blur-3xl transition-colors ${
+          isDark ? 'bg-purple-500/20' : 'bg-purple-200/30'
+        }`}></div>
+        <div className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl transition-colors ${
+          isDark ? 'bg-pink-500/10' : 'bg-pink-200/20'
+        }`}></div>
       </div>
 
       <div className="relative z-10 container-modern section-padding">
@@ -218,12 +230,16 @@ const LandingScreen: React.FC = () => {
             <Brain className="w-10 h-10 sm:w-12 sm:h-12 text-white" />
           </div>
           
-          <h1 className="text-responsive-xl font-bold text-gray-900 mb-4 sm:mb-6 leading-tight">
+          <h1 className={`text-responsive-xl font-bold mb-4 sm:mb-6 leading-tight transition-colors ${
+            isDark ? 'text-gray-100' : 'text-gray-900'
+          }`}>
             Welcome to Your
             <span className="block gradient-text">AI Learning Journey</span>
           </h1>
           
-          <p className="text-lg sm:text-xl text-gray-600 mb-6 sm:mb-8 max-w-3xl mx-auto leading-relaxed">
+          <p className={`text-lg sm:text-xl mb-6 sm:mb-8 max-w-3xl mx-auto leading-relaxed transition-colors ${
+            isDark ? 'text-gray-300' : 'text-gray-600'
+          }`}>
             Experience the future of personalized education with AI-powered mentoring, 
             intelligent scheduling, and adaptive learning paths tailored just for you.
           </p>
@@ -237,7 +253,9 @@ const LandingScreen: React.FC = () => {
               <Play className="w-5 h-5 mr-2" />
               Start Demo Tour
             </button>
-            <span className="text-sm text-gray-500 text-center">
+            <span className={`text-sm text-center transition-colors ${
+              isDark ? 'text-gray-400' : 'text-gray-500'
+            }`}>
               {showTour ? `Step ${tourStep + 1} of ${demoActions.length}` : 'Interactive walkthrough available'}
             </span>
           </div>
@@ -254,8 +272,16 @@ const LandingScreen: React.FC = () => {
                     <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center mx-auto mb-3 sm:mb-4">
                       <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                     </div>
-                    <div className="text-xl sm:text-2xl font-bold text-gray-900 mb-1">{stat.value}</div>
-                    <div className="text-xs sm:text-sm text-gray-600">{stat.label}</div>
+                    <div className={`text-xl sm:text-2xl font-bold mb-1 transition-colors ${
+                      isDark ? 'text-gray-100' : 'text-gray-900'
+                    }`}>
+                      {stat.value}
+                    </div>
+                    <div className={`text-xs sm:text-sm transition-colors ${
+                      isDark ? 'text-gray-400' : 'text-gray-600'
+                    }`}>
+                      {stat.label}
+                    </div>
                   </div>
                 </div>
               );
@@ -292,8 +318,16 @@ const LandingScreen: React.FC = () => {
                       <Icon className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
                     </div>
                     
-                    <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2 sm:mb-3">{action.title}</h3>
-                    <p className="text-gray-600 mb-4 sm:mb-6 leading-relaxed text-sm sm:text-base">{action.description}</p>
+                    <h3 className={`text-lg sm:text-xl font-bold mb-2 sm:mb-3 transition-colors ${
+                      isDark ? 'text-gray-100' : 'text-gray-900'
+                    }`}>
+                      {action.title}
+                    </h3>
+                    <p className={`mb-4 sm:mb-6 leading-relaxed text-sm sm:text-base transition-colors ${
+                      isDark ? 'text-gray-300' : 'text-gray-600'
+                    }`}>
+                      {action.description}
+                    </p>
                     
                     <div className="flex items-center text-indigo-600 font-semibold group-hover:text-indigo-800 transition-colors">
                       <span>Try it now</span>
@@ -309,10 +343,14 @@ const LandingScreen: React.FC = () => {
         {/* Features Grid */}
         <div className="mb-12 sm:mb-16">
           <div className="text-center mb-8 sm:mb-12">
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">
+            <h2 className={`text-2xl sm:text-3xl font-bold mb-4 transition-colors ${
+              isDark ? 'text-gray-100' : 'text-gray-900'
+            }`}>
               Powered by Advanced AI Technology
             </h2>
-            <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto">
+            <p className={`text-base sm:text-lg max-w-2xl mx-auto transition-colors ${
+              isDark ? 'text-gray-300' : 'text-gray-600'
+            }`}>
               Our platform combines machine learning, natural language processing, and educational psychology 
               to create the most effective learning experience possible.
             </p>
@@ -327,8 +365,16 @@ const LandingScreen: React.FC = () => {
                     <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center mx-auto mb-3 sm:mb-4">
                       <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                     </div>
-                    <h3 className="font-semibold text-gray-900 mb-2 text-sm sm:text-base">{feature.title}</h3>
-                    <p className="text-xs sm:text-sm text-gray-600">{feature.description}</p>
+                    <h3 className={`font-semibold mb-2 text-sm sm:text-base transition-colors ${
+                      isDark ? 'text-gray-100' : 'text-gray-900'
+                    }`}>
+                      {feature.title}
+                    </h3>
+                    <p className={`text-xs sm:text-sm transition-colors ${
+                      isDark ? 'text-gray-400' : 'text-gray-600'
+                    }`}>
+                      {feature.description}
+                    </p>
                   </div>
                 </div>
               );
@@ -340,11 +386,13 @@ const LandingScreen: React.FC = () => {
         <div className="card mb-12 sm:mb-16">
           <div className="p-6 sm:p-8">
             <div className="text-center mb-6 sm:mb-8">
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 flex items-center justify-center">
+              <h2 className={`text-xl sm:text-2xl font-bold mb-4 flex items-center justify-center transition-colors ${
+                isDark ? 'text-gray-100' : 'text-gray-900'
+              }`}>
                 <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-indigo-500" />
                 Advanced AI Features
               </h2>
-              <p className="text-gray-600">
+              <p className={`transition-colors ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
                 Experience cutting-edge technology that adapts to your unique learning style
               </p>
             </div>
@@ -354,9 +402,15 @@ const LandingScreen: React.FC = () => {
                 <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <Brain className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
                 </div>
-                <h3 className="font-semibold text-gray-900 mb-2">TensorFlow Recommendations</h3>
-                <p className="text-sm text-gray-600">
-                  Machine learning models analyze your progress to suggest optimal next topics
+                <h3 className={`font-semibold mb-2 transition-colors ${
+                  isDark ? 'text-gray-100' : 'text-gray-900'
+                }`}>
+                  Mistral AI Recommendations
+                </h3>
+                <p className={`text-sm transition-colors ${
+                  isDark ? 'text-gray-400' : 'text-gray-600'
+                }`}>
+                  Advanced language models analyze your progress to suggest optimal next topics
                 </p>
               </div>
 
@@ -364,8 +418,14 @@ const LandingScreen: React.FC = () => {
                 <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <MessageCircle className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
                 </div>
-                <h3 className="font-semibold text-gray-900 mb-2">Memory-Enhanced Chat</h3>
-                <p className="text-sm text-gray-600">
+                <h3 className={`font-semibold mb-2 transition-colors ${
+                  isDark ? 'text-gray-100' : 'text-gray-900'
+                }`}>
+                  Memory-Enhanced Chat
+                </h3>
+                <p className={`text-sm transition-colors ${
+                  isDark ? 'text-gray-400' : 'text-gray-600'
+                }`}>
                   Pinecone vector database remembers your conversations for consistent guidance
                 </p>
               </div>
@@ -374,8 +434,14 @@ const LandingScreen: React.FC = () => {
                 <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <BookOpen className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
                 </div>
-                <h3 className="font-semibold text-gray-900 mb-2">RAG-Powered Resources</h3>
-                <p className="text-sm text-gray-600">
+                <h3 className={`font-semibold mb-2 transition-colors ${
+                  isDark ? 'text-gray-100' : 'text-gray-900'
+                }`}>
+                  RAG-Powered Resources
+                </h3>
+                <p className={`text-sm transition-colors ${
+                  isDark ? 'text-gray-400' : 'text-gray-600'
+                }`}>
                   Retrieval-augmented generation finds the most relevant learning materials
                 </p>
               </div>

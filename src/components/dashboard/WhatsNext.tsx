@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { Brain, Clock, Star, Plus, CheckCircle, Lightbulb, TrendingUp, Target, AlertCircle } from 'lucide-react';
 import { addWeeklyPlanItem } from '../../services/firestore';
 import { mistralService } from '../../services/mistralService';
@@ -17,6 +18,7 @@ interface TopicRecommendation {
 
 const WhatsNext: React.FC = () => {
   const { currentUser, userProfile, userProgress = [] } = useAuth();
+  const { isDark } = useTheme();
   const [recommendations, setRecommendations] = useState<TopicRecommendation[]>([]);
   const [loading, setLoading] = useState(false);
   const [acceptedRecommendations, setAcceptedRecommendations] = useState<Set<string>>(new Set());
@@ -248,29 +250,39 @@ const WhatsNext: React.FC = () => {
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
-      case 'beginner': return 'bg-emerald-100 text-emerald-700';
-      case 'intermediate': return 'bg-orange-100 text-orange-700';
-      case 'advanced': return 'bg-red-100 text-red-700';
-      default: return 'bg-gray-100 text-gray-700';
+      case 'beginner': return isDark ? 'bg-emerald-900/30 text-emerald-300' : 'bg-emerald-100 text-emerald-700';
+      case 'intermediate': return isDark ? 'bg-orange-900/30 text-orange-300' : 'bg-orange-100 text-orange-700';
+      case 'advanced': return isDark ? 'bg-red-900/30 text-red-300' : 'bg-red-100 text-red-700';
+      default: return isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700';
     }
   };
 
   const getConfidenceColor = (confidence: number) => {
     if (confidence >= 0.8) return 'text-emerald-600';
     if (confidence >= 0.6) return 'text-orange-600';
-    return 'text-gray-600';
+    return isDark ? 'text-gray-400' : 'text-gray-600';
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <div className={`rounded-xl shadow-sm border p-6 transition-colors ${
+      isDark 
+        ? 'bg-gray-800 border-gray-700' 
+        : 'bg-white border-gray-200'
+    }`}>
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center">
           <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center mr-3">
             <Brain className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">What's Next?</h2>
-            <p className="text-sm text-gray-600">
+            <h2 className={`text-xl font-semibold transition-colors ${
+              isDark ? 'text-gray-100' : 'text-gray-900'
+            }`}>
+              What's Next?
+            </h2>
+            <p className={`text-sm transition-colors ${
+              isDark ? 'text-gray-400' : 'text-gray-600'
+            }`}>
               {error ? 'Smart recommendations based on your progress' : 'Mistral AI-powered recommendations based on your progress'}
             </p>
           </div>
@@ -279,7 +291,11 @@ const WhatsNext: React.FC = () => {
         <button
           onClick={fetchRecommendations}
           disabled={loading}
-          className="flex items-center px-4 py-2 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg transition-colors disabled:opacity-50"
+          className={`flex items-center px-4 py-2 rounded-lg transition-colors disabled:opacity-50 ${
+            isDark 
+              ? 'text-indigo-400 hover:text-indigo-300 hover:bg-gray-700' 
+              : 'text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50'
+          }`}
         >
           <TrendingUp className="w-4 h-4 mr-2" />
           {loading ? 'Analyzing...' : 'Refresh'}
@@ -287,20 +303,38 @@ const WhatsNext: React.FC = () => {
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+        <div className={`mb-6 p-4 border rounded-lg transition-colors ${
+          isDark 
+            ? 'bg-amber-900/20 border-amber-700/50' 
+            : 'bg-amber-50 border-amber-200'
+        }`}>
           <div className="flex items-center mb-2">
-            <AlertCircle className="w-5 h-5 text-amber-600 mr-2" />
-            <span className="font-medium text-amber-800">Using Offline Mode</span>
+            <AlertCircle className={`w-5 h-5 mr-2 transition-colors ${
+              isDark ? 'text-amber-400' : 'text-amber-600'
+            }`} />
+            <span className={`font-medium transition-colors ${
+              isDark ? 'text-amber-300' : 'text-amber-800'
+            }`}>
+              Using Offline Mode
+            </span>
           </div>
-          <p className="text-sm text-amber-700 mb-2">
+          <p className={`text-sm mb-2 transition-colors ${
+            isDark ? 'text-amber-400' : 'text-amber-700'
+          }`}>
             {error.includes('not configured') 
               ? 'Mistral AI is not configured. Add your MISTRAL_API_KEY to enable AI-powered recommendations.'
               : 'Unable to connect to Mistral AI service. Showing smart recommendations based on your progress.'
             }
           </p>
-          <details className="text-xs text-amber-600">
-            <summary className="cursor-pointer hover:text-amber-800">Technical details</summary>
-            <p className="mt-1 font-mono bg-amber-100 p-2 rounded">{error}</p>
+          <details className={`text-xs transition-colors ${
+            isDark ? 'text-amber-500' : 'text-amber-600'
+          }`}>
+            <summary className="cursor-pointer hover:text-amber-800 dark:hover:text-amber-300">Technical details</summary>
+            <p className={`mt-1 font-mono p-2 rounded transition-colors ${
+              isDark ? 'bg-amber-900/30' : 'bg-amber-100'
+            }`}>
+              {error}
+            </p>
           </details>
         </div>
       )}
@@ -309,7 +343,9 @@ const WhatsNext: React.FC = () => {
         <div className="space-y-4">
           {[1, 2, 3].map(i => (
             <div key={i} className="animate-pulse">
-              <div className="bg-gray-200 rounded-lg h-32"></div>
+              <div className={`rounded-lg h-32 transition-colors ${
+                isDark ? 'bg-gray-700' : 'bg-gray-200'
+              }`}></div>
             </div>
           ))}
         </div>
@@ -323,23 +359,35 @@ const WhatsNext: React.FC = () => {
                 key={recommendation.topicId}
                 className={`p-5 rounded-lg border-2 transition-all hover:shadow-md ${
                   isAccepted 
-                    ? 'border-emerald-200 bg-emerald-50' 
-                    : 'border-gray-200 hover:border-indigo-300'
+                    ? isDark 
+                      ? 'border-emerald-700 bg-emerald-900/20' 
+                      : 'border-emerald-200 bg-emerald-50'
+                    : isDark 
+                      ? 'border-gray-700 hover:border-indigo-600' 
+                      : 'border-gray-200 hover:border-indigo-300'
                 }`}
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center space-x-3">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                      index === 0 ? 'bg-yellow-100 text-yellow-700' :
-                      index === 1 ? 'bg-gray-100 text-gray-700' :
-                      'bg-orange-100 text-orange-700'
+                      index === 0 ? isDark ? 'bg-yellow-900/30 text-yellow-400' : 'bg-yellow-100 text-yellow-700' :
+                      index === 1 ? isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700' :
+                      isDark ? 'bg-orange-900/30 text-orange-400' : 'bg-orange-100 text-orange-700'
                     }`}>
                       {index + 1}
                     </div>
                     <div>
-                      <h3 className="font-semibold text-gray-900">{recommendation.topicName}</h3>
+                      <h3 className={`font-semibold transition-colors ${
+                        isDark ? 'text-gray-100' : 'text-gray-900'
+                      }`}>
+                        {recommendation.topicName}
+                      </h3>
                       <div className="flex items-center space-x-2 mt-1">
-                        <span className="text-sm text-gray-600">{recommendation.category}</span>
+                        <span className={`text-sm transition-colors ${
+                          isDark ? 'text-gray-400' : 'text-gray-600'
+                        }`}>
+                          {recommendation.category}
+                        </span>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(recommendation.difficulty)}`}>
                           {recommendation.difficulty}
                         </span>
@@ -353,7 +401,9 @@ const WhatsNext: React.FC = () => {
                         <Star className="w-4 h-4 mr-1" />
                         {Math.round(recommendation.confidence * 100)}% match
                       </div>
-                      <div className="flex items-center text-xs text-gray-500 mt-1">
+                      <div className={`flex items-center text-xs mt-1 transition-colors ${
+                        isDark ? 'text-gray-400' : 'text-gray-500'
+                      }`}>
                         <Clock className="w-3 h-3 mr-1" />
                         {recommendation.estimatedTime} min
                       </div>
@@ -361,16 +411,24 @@ const WhatsNext: React.FC = () => {
                   </div>
                 </div>
 
-                <p className="text-sm text-gray-600 mb-4 leading-relaxed">
+                <p className={`text-sm mb-4 leading-relaxed transition-colors ${
+                  isDark ? 'text-gray-300' : 'text-gray-600'
+                }`}>
                   {recommendation.reasoning}
                 </p>
 
                 {recommendation.prerequisites.length > 0 && (
                   <div className="mb-4">
-                    <div className="text-xs font-medium text-gray-700 mb-2">Prerequisites:</div>
+                    <div className={`text-xs font-medium mb-2 transition-colors ${
+                      isDark ? 'text-gray-400' : 'text-gray-700'
+                    }`}>
+                      Prerequisites:
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       {recommendation.prerequisites.map((prereq, i) => (
-                        <span key={i} className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
+                        <span key={i} className={`px-2 py-1 rounded text-xs transition-colors ${
+                          isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
+                        }`}>
                           {prereq}
                         </span>
                       ))}
@@ -381,7 +439,9 @@ const WhatsNext: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Lightbulb className="w-4 h-4 text-indigo-500" />
-                    <span className="text-xs text-gray-500">
+                    <span className={`text-xs transition-colors ${
+                      isDark ? 'text-gray-400' : 'text-gray-500'
+                    }`}>
                       {error ? 'Smart Algorithm' : `Powered by ${mistralService.getModel()}`}
                     </span>
                   </div>
@@ -409,18 +469,40 @@ const WhatsNext: React.FC = () => {
 
       {!loading && recommendations.length === 0 && !error && (
         <div className="text-center py-8">
-          <Target className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500 mb-2">No recommendations available</p>
-          <p className="text-xs text-gray-400">Complete more topics to get personalized suggestions</p>
+          <Target className={`w-12 h-12 mx-auto mb-4 transition-colors ${
+            isDark ? 'text-gray-600' : 'text-gray-300'
+          }`} />
+          <p className={`mb-2 transition-colors ${
+            isDark ? 'text-gray-400' : 'text-gray-500'
+          }`}>
+            No recommendations available
+          </p>
+          <p className={`text-xs transition-colors ${
+            isDark ? 'text-gray-500' : 'text-gray-400'
+          }`}>
+            Complete more topics to get personalized suggestions
+          </p>
         </div>
       )}
 
-      <div className="mt-6 p-4 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border border-purple-200">
+      <div className={`mt-6 p-4 rounded-lg border transition-colors ${
+        isDark 
+          ? 'bg-gradient-to-r from-purple-900/20 to-indigo-900/20 border-purple-700/50' 
+          : 'bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-200'
+      }`}>
         <div className="flex items-center mb-2">
-          <Brain className="w-5 h-5 text-purple-600 mr-2" />
-          <span className="font-medium text-purple-800">How it works</span>
+          <Brain className={`w-5 h-5 mr-2 transition-colors ${
+            isDark ? 'text-purple-400' : 'text-purple-600'
+          }`} />
+          <span className={`font-medium transition-colors ${
+            isDark ? 'text-purple-300' : 'text-purple-800'
+          }`}>
+            How it works
+          </span>
         </div>
-        <p className="text-sm text-purple-700">
+        <p className={`text-sm transition-colors ${
+          isDark ? 'text-purple-400' : 'text-purple-700'
+        }`}>
           {error ? (
             'Our smart recommendation system analyzes your learning history, skill level, and preferences to suggest relevant next topics. When Mistral AI is configured, we use advanced language models for even more personalized recommendations.'
           ) : (

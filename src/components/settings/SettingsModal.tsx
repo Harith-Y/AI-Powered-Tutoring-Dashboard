@@ -9,7 +9,7 @@ interface SettingsModalProps {
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
-  const { userProfile, userPreferences, updatePreferences } = useAuth();
+  const { currentUser, userProfile, userPreferences, updatePreferences } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
   const [loading, setLoading] = useState(false);
   const [localPreferences, setLocalPreferences] = useState<UserPreferences>(
@@ -25,6 +25,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   );
 
   if (!isOpen) return null;
+
+  // Get display name and email from either userProfile or currentUser
+  const displayName = userProfile?.displayName || currentUser?.displayName || 'User';
+  const email = userProfile?.email || currentUser?.email || '';
 
   const handleSave = async () => {
     setLoading(true);
@@ -72,7 +76,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
             <label className="block text-sm font-medium text-gray-700 mb-2">Display Name</label>
             <input
               type="text"
-              value={userProfile?.displayName || ''}
+              value={displayName}
               disabled
               className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
             />
@@ -82,7 +86,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
             <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
             <input
               type="email"
-              value={userProfile?.email || ''}
+              value={email}
               disabled
               className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
             />
@@ -104,6 +108,24 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                 </label>
               ))}
             </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Member Since</label>
+            <input
+              type="text"
+              value={userProfile?.createdAt ? userProfile.createdAt.toLocaleDateString() : 'Recently joined'}
+              disabled
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Last Login</label>
+            <input
+              type="text"
+              value={userProfile?.lastLoginAt ? userProfile.lastLoginAt.toLocaleDateString() : 'Today'}
+              disabled
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
+            />
           </div>
         </div>
       </div>

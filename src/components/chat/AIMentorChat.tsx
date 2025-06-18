@@ -5,6 +5,7 @@ import { Send, Bot, User, Lightbulb, Code, Book, ArrowLeft, Sparkles, Clock, Tar
 import { ChatMessage } from '../../types';
 import { addProgress } from '../../services/firestore';
 import { memoryService, MemoryEvent } from '../../services/memoryService';
+import { mistralService } from '../../services/mistralService';
 import RecommendedResources from './RecommendedResources';
 
 const AIMentorChat: React.FC = () => {
@@ -47,7 +48,7 @@ const AIMentorChat: React.FC = () => {
     const completedTopics = userProgress?.length || 0;
     const recentTopic = userProgress?.[0]?.topicName;
     
-    let greeting = `Hi ${name}! 👋 I'm your AI mentor with enhanced memory capabilities, and I'm excited to help you on your learning journey.\n\n`;
+    let greeting = `Hi ${name}! 👋 I'm your AI mentor powered by Mistral AI, and I'm excited to help you on your learning journey.\n\n`;
     
     if (completedTopics > 0) {
       greeting += `I can see you've completed ${completedTopics} topics so far - that's fantastic progress! `;
@@ -62,7 +63,7 @@ const AIMentorChat: React.FC = () => {
       greeting += `I see you're interested in ${userProfile.preferredTopics.slice(0, 3).join(', ')}. `;
     }
     
-    greeting += `I now remember our past conversations and can provide more consistent, personalized guidance based on your learning history.\n\nWhat would you like to explore today? I can help with:\n• Explaining concepts\n• Code reviews and debugging\n• Learning path recommendations\n• Practice exercises\n\nJust ask me anything! 🚀`;
+    greeting += `I have memory capabilities and can provide consistent, personalized guidance based on your learning history.\n\nWhat would you like to explore today? I can help with:\n• Explaining concepts\n• Code reviews and debugging\n• Learning path recommendations\n• Practice exercises\n\nJust ask me anything! 🚀`;
     
     return greeting;
   };
@@ -117,9 +118,8 @@ const AIMentorChat: React.FC = () => {
   };
 
   const getContextualResponse = async (userMessage: string): Promise<string> => {
-    const lowerMessage = userMessage.toLowerCase();
     const level = userProfile?.skillLevel || 'beginner';
-    const completedTopics = userProgress?.length || 0;
+    const completedTopics = (userProgress || []).map(p => p.topicName);
     const averageScore = userProgress && userProgress.length > 0 
       ? userProgress.reduce((acc, p) => acc + p.score, 0) / userProgress.length 
       : 0;
@@ -142,128 +142,77 @@ const AIMentorChat: React.FC = () => {
       }
     }
     
+    try {
+      // Use Mistral AI for personalized response
+      const response = await mistralService.generatePersonalizedResponse(
+        userMessage,
+        {
+          skillLevel: level,
+          completedTopics,
+          averageScore,
+          memoryContext: memoryContextString
+        }
+      );
+      
+      return response;
+    } catch (error) {
+      console.error('Error generating AI response:', error);
+      
+      // Fallback to rule-based response
+      return generateFallbackResponse(userMessage, level, completedTopics, averageScore);
+    }
+  };
+
+  const generateFallbackResponse = (
+    userMessage: string, 
+    level: string, 
+    completedTopics: string[], 
+    averageScore: number
+  ): string => {
+    const lowerMessage = userMessage.toLowerCase();
+    
     // Analyze user's question type
     const isConceptQuestion = lowerMessage.includes('what is') || lowerMessage.includes('explain') || lowerMessage.includes('how does');
     const isCodeQuestion = lowerMessage.includes('code') || lowerMessage.includes('function') || lowerMessage.includes('syntax');
     const isProgressQuestion = lowerMessage.includes('progress') || lowerMessage.includes('next') || lowerMessage.includes('should i');
     
     let response = '';
-    let suggestedTopic = '';
     
-    // Generate contextual responses based on user's data and memory
     if (isProgressQuestion) {
-      response = generateProgressResponse();
-      suggestedTopic = generateProgressSuggestion();
+      response = `You've completed ${completedTopics.length} topics with an average score of ${Math.round(averageScore)}%. `;
+      if (averageScore >= 80) {
+        response += "You're doing excellent work! Consider tackling more advanced topics.";
+      } else if (averageScore >= 60) {
+        response += "You're making good progress. Focus on practicing the concepts you've learned.";
+      } else {
+        response += "Let's strengthen your foundation with some review and practice.";
+      }
     } else if (isConceptQuestion) {
-      response = generateConceptResponse(userMessage, level, memoryContextString);
-      suggestedTopic = generateConceptSuggestion();
+      if (level === 'beginner') {
+        response = "Let me explain this in simple terms with a practical example. Think of it like...";
+      } else if (level === 'intermediate') {
+        response = "This is a great concept to master! Here's how it works and why it's important...";
+      } else {
+        response = "Excellent question! Let's dive into the technical details and explore some advanced patterns...";
+      }
     } else if (isCodeQuestion) {
-      response = generateCodeResponse(userMessage, level, memoryContextString);
-      suggestedTopic = generateCodeSuggestion();
+      if (level === 'beginner') {
+        response = "Let's break this down step by step. I'll show you a simple example and explain each part...";
+      } else if (level === 'intermediate') {
+        response = "Good question! Here's how you can approach this, along with some best practices...";
+      } else {
+        response = "Let's explore this with a comprehensive example, including edge cases and optimization techniques...";
+      }
     } else {
-      response = generateGeneralResponse(userMessage, level, memoryContextString);
-      suggestedTopic = generateGeneralSuggestion();
+      response = `That's a thoughtful question! Based on your ${level} level and progress with ${completedTopics.length} completed topics, let me provide you with a tailored explanation.`;
     }
     
-    // Add personalized context
-    if (completedTopics > 0 && Math.random() > 0.5) {
-      response += `\n\nBased on your ${completedTopics} completed topics with an average score of ${Math.round(averageScore)}%, `;
-      if (averageScore >= 80) {
-        response += "you're doing excellent work! ";
-      } else if (averageScore >= 60) {
-        response += "you're making good progress. ";
-      } else {
-        response += "let's focus on strengthening your foundation. ";
-      }
-    }
-
     // Add memory context if available
-    if (memoryContextString) {
+    if (memoryContext) {
       response += `\n\n🧠 **Building on our previous conversations:** I remember we've discussed similar topics before, which helps me provide more consistent guidance tailored to your learning journey.`;
     }
     
-    return `${response}\n\n💡 **Suggested next step:** ${suggestedTopic}`;
-  };
-
-  const generateProgressResponse = (): string => {
-    const completedTopics = userProgress?.length || 0;
-    const weeklyTasks = weeklyPlan?.filter(task => !task.completed).length || 0;
-    const level = userProfile?.skillLevel || 'beginner';
-    
-    if (completedTopics === 0) {
-      return `Great question! Since you're just starting your journey, I recommend beginning with fundamental concepts in ${userProfile?.preferredTopics?.[0] || 'programming'}. Let's build a solid foundation first.`;
-    }
-    
-    return `You've made excellent progress with ${completedTopics} completed topics! Looking at your learning pattern, you have ${weeklyTasks} tasks remaining this week. As a ${level} learner, I suggest focusing on practical application of what you've learned.`;
-  };
-
-  const generateConceptResponse = (message: string, level: string, memoryContext: string): string => {
-    const responses = {
-      beginner: "Let me explain this in simple terms with a practical example. Think of it like...",
-      intermediate: "This is a great concept to master! Here's how it works and why it's important...",
-      advanced: "Excellent question! Let's dive into the technical details and explore some advanced patterns..."
-    };
-    
-    let baseResponse = responses[level as keyof typeof responses] || responses.beginner;
-    
-    if (memoryContext) {
-      baseResponse += " I notice we've touched on related topics before, so I can build on that foundation.";
-    }
-    
-    return baseResponse;
-  };
-
-  const generateCodeResponse = (message: string, level: string, memoryContext: string): string => {
-    const responses = {
-      beginner: "Let's break this down step by step. I'll show you a simple example and explain each part...",
-      intermediate: "Good question! Here's how you can approach this, along with some best practices...",
-      advanced: "Let's explore this with a comprehensive example, including edge cases and optimization techniques..."
-    };
-    
-    let baseResponse = responses[level as keyof typeof responses] || responses.beginner;
-    
-    if (memoryContext) {
-      baseResponse += " Based on our previous coding discussions, I can tailor this explanation to your experience level.";
-    }
-    
-    return baseResponse;
-  };
-
-  const generateGeneralResponse = (message: string, level: string, memoryContext: string): string => {
-    let baseResponse = `That's a thoughtful question! Based on your ${level} level, let me provide you with a tailored explanation that builds on what you already know.`;
-    
-    if (memoryContext) {
-      baseResponse += " I can see how this connects to our previous conversations, which helps me give you more relevant guidance.";
-    }
-    
-    return baseResponse;
-  };
-
-  const generateProgressSuggestion = (): string => {
-    const incompleteTasks = weeklyPlan?.filter(task => !task.completed) || [];
-    if (incompleteTasks.length > 0) {
-      return `Complete "${incompleteTasks[0].topic}" from your weekly plan`;
-    }
-    return `Review your recent progress and set new learning goals`;
-  };
-
-  const generateConceptSuggestion = (): string => {
-    const topics = userProfile?.preferredTopics || ['JavaScript', 'React'];
-    return `Practice ${topics[Math.floor(Math.random() * topics.length)]} with hands-on exercises`;
-  };
-
-  const generateCodeSuggestion = (): string => {
-    return `Try building a small project to apply what you've learned`;
-  };
-
-  const generateGeneralSuggestion = (): string => {
-    const suggestions = [
-      'Explore interactive coding challenges',
-      'Join a coding community for peer learning',
-      'Build a portfolio project',
-      'Review and refactor your previous code'
-    ];
-    return suggestions[Math.floor(Math.random() * suggestions.length)];
+    return response;
   };
 
   const handleSendMessage = async () => {
@@ -285,8 +234,7 @@ const AIMentorChat: React.FC = () => {
     const searchQuery = extractSearchQuery(currentMessage);
     setCurrentQuery(searchQuery);
 
-    // Simulate AI thinking time
-    setTimeout(async () => {
+    try {
       const aiResponseContent = await getContextualResponse(currentMessage);
       
       const aiResponse: ChatMessage = {
@@ -298,9 +246,8 @@ const AIMentorChat: React.FC = () => {
       };
 
       setMessages(prev => [...prev, aiResponse]);
-      setIsTyping(false);
 
-      // Store this interaction in Pinecone for future reference
+      // Store this interaction in memory for future reference
       if (currentUser && userProfile) {
         try {
           const topic = memoryService.extractTopicFromMessage(currentMessage);
@@ -335,7 +282,22 @@ const AIMentorChat: React.FC = () => {
           category: 'mentoring'
         }).catch(console.error);
       }
-    }, 1500 + Math.random() * 1000); // Variable response time for realism
+    } catch (error) {
+      console.error('Error in chat response:', error);
+      
+      // Fallback error message
+      const errorResponse: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        content: "I apologize, but I'm having trouble generating a response right now. Please try rephrasing your question or ask about a specific programming topic.",
+        sender: 'ai',
+        timestamp: new Date(),
+        adaptedToLevel: true
+      };
+      
+      setMessages(prev => [...prev, errorResponse]);
+    } finally {
+      setIsTyping(false);
+    }
   };
 
   const handleResourceFeedback = (resourceId: string, helpful: boolean) => {
@@ -385,7 +347,7 @@ const AIMentorChat: React.FC = () => {
                   <Brain className="w-5 h-5 text-purple-500 ml-1" />
                 </h1>
                 <p className="text-sm text-gray-500">
-                  Personalized for {userProfile?.skillLevel} level • {userProgress?.length || 0} topics completed • Memory-enhanced • RAG-powered
+                  Powered by Mistral AI • {userProfile?.skillLevel} level • {userProgress?.length || 0} topics completed • Memory-enhanced
                 </p>
               </div>
             </div>
@@ -400,6 +362,12 @@ const AIMentorChat: React.FC = () => {
               <div className="flex items-center text-purple-600">
                 <Brain className="w-4 h-4 mr-1" />
                 <span>Memory active</span>
+              </div>
+            )}
+            {mistralService.isConfigured() && (
+              <div className="flex items-center text-emerald-600">
+                <Sparkles className="w-4 h-4 mr-1" />
+                <span>Mistral AI</span>
               </div>
             )}
           </div>
@@ -464,6 +432,11 @@ const AIMentorChat: React.FC = () => {
                               🧠 Memory-enhanced
                             </span>
                           )}
+                          {message.sender === 'ai' && mistralService.isConfigured() && (
+                            <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full">
+                              🤖 Mistral AI
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -494,7 +467,7 @@ const AIMentorChat: React.FC = () => {
                         <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
                         <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                       </div>
-                      <span className="text-sm text-gray-500">AI is thinking, searching resources, and accessing memory...</span>
+                      <span className="text-sm text-gray-500">Mistral AI is thinking and accessing memory...</span>
                     </div>
                   </div>
                 </div>
@@ -549,7 +522,7 @@ const AIMentorChat: React.FC = () => {
               </button>
             </div>
             <p className="text-xs text-gray-500 mt-2 text-center">
-              AI responses are personalized, memory-enhanced, and include RAG-powered resource recommendations
+              AI responses are powered by Mistral AI, personalized, memory-enhanced, and include RAG-powered resource recommendations
             </p>
           </div>
         </div>

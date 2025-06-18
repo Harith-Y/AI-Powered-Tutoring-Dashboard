@@ -1,8 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-// TensorFlow.js for Deno
-import * as tf from 'https://esm.sh/@tensorflow/tfjs@4.10.0'
 
 interface UserTopicHistory {
   topicId: string;
@@ -38,6 +34,106 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
+// Mistral AI chat completion function
+async function generateMistralRecommendations(
+  topicHistory: UserTopicHistory[],
+  skillLevel: string,
+  preferredTopics: string[]
+): Promise<TopicRecommendation[]> {
+  const mistralApiKey = Deno.env.get('MISTRAL_API_KEY');
+  
+  if (!mistralApiKey) {
+    console.log('Mistral API key not found, using fallback recommendations');
+    return getFallbackRecommendations(skillLevel, preferredTopics, topicHistory);
+  }
+
+  try {
+    const systemPrompt = `You are an AI learning advisor. Based on the user's learning history, recommend exactly 3 next topics for learning.
+
+User Profile:
+- Skill Level: ${skillLevel}
+- Preferred Topics: ${preferredTopics.join(', ')}
+- Completed Topics: ${topicHistory.length}
+
+Learning History:
+${topicHistory.map(h => `- ${h.topicName} (${h.category}, ${h.difficulty}): ${h.score}%`).join('\n')}
+
+Provide exactly 3 recommendations in this JSON format (no additional text):
+[
+  {
+    "topicId": "unique-topic-id",
+    "topicName": "Topic Name",
+    "category": "Category",
+    "difficulty": "beginner|intermediate|advanced",
+    "estimatedTime": 120,
+    "confidence": 0.85,
+    "reasoning": "Why this topic is recommended based on user's history",
+    "prerequisites": ["Prerequisite 1", "Prerequisite 2"]
+  }
+]
+
+Rules:
+- Match difficulty to user's skill level or slightly above
+- Consider completed topics to avoid repetition
+- Focus on preferred topics when possible
+- Provide clear reasoning for each recommendation
+- Ensure logical progression from completed topics`;
+
+    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${mistralApiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'mistral-large-latest',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: 'Please provide 3 topic recommendations based on my learning history.' }
+        ],
+        temperature: 0.3,
+        max_tokens: 1500,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('Mistral API error:', await response.text());
+      return getFallbackRecommendations(skillLevel, preferredTopics, topicHistory);
+    }
+
+    const data = await response.json();
+    const content = data.choices[0]?.message?.content;
+
+    if (!content) {
+      console.error('No content in Mistral response');
+      return getFallbackRecommendations(skillLevel, preferredTopics, topicHistory);
+    }
+
+    // Try to parse JSON response
+    try {
+      const recommendations = JSON.parse(content);
+      if (Array.isArray(recommendations) && recommendations.length > 0) {
+        return recommendations.slice(0, 3).map((rec: any) => ({
+          topicId: rec.topicId || `mistral-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          topicName: rec.topicName || 'Unknown Topic',
+          category: rec.category || 'General',
+          difficulty: rec.difficulty || skillLevel,
+          estimatedTime: rec.estimatedTime || 120,
+          confidence: rec.confidence || 0.7,
+          reasoning: rec.reasoning || 'Recommended based on your learning progress.',
+          prerequisites: rec.prerequisites || []
+        }));
+      }
+    } catch (parseError) {
+      console.warn('Could not parse Mistral recommendations JSON:', parseError);
+    }
+  } catch (error) {
+    console.error('Error calling Mistral API:', error);
+  }
+
+  return getFallbackRecommendations(skillLevel, preferredTopics, topicHistory);
+}
+
 // Topic knowledge graph with relationships and prerequisites
 const TOPIC_KNOWLEDGE_GRAPH = {
   'javascript-basics': {
@@ -53,7 +149,7 @@ const TOPIC_KNOWLEDGE_GRAPH = {
     category: 'JavaScript',
     difficulty: 'beginner',
     estimatedTime: 90,
-    prerequisites: ['javascript-basics'],
+    prerequisites: ['JavaScript Fundamentals'],
     leads_to: ['javascript-events', 'react-basics']
   },
   'javascript-async': {
@@ -61,7 +157,7 @@ const TOPIC_KNOWLEDGE_GRAPH = {
     category: 'JavaScript',
     difficulty: 'intermediate',
     estimatedTime: 150,
-    prerequisites: ['javascript-basics'],
+    prerequisites: ['JavaScript Fundamentals'],
     leads_to: ['javascript-fetch', 'node-basics']
   },
   'javascript-es6': {
@@ -69,7 +165,7 @@ const TOPIC_KNOWLEDGE_GRAPH = {
     category: 'JavaScript',
     difficulty: 'intermediate',
     estimatedTime: 100,
-    prerequisites: ['javascript-basics'],
+    prerequisites: ['JavaScript Fundamentals'],
     leads_to: ['javascript-modules', 'react-basics']
   },
   'react-basics': {
@@ -77,23 +173,23 @@ const TOPIC_KNOWLEDGE_GRAPH = {
     category: 'React',
     difficulty: 'beginner',
     estimatedTime: 180,
-    prerequisites: ['javascript-basics', 'javascript-es6'],
+    prerequisites: ['JavaScript Fundamentals', 'ES6+ Features'],
     leads_to: ['react-hooks', 'react-state']
   },
   'react-hooks': {
-    name: 'React Hooks',
+    name: 'React Hooks Deep Dive',
     category: 'React',
     difficulty: 'intermediate',
     estimatedTime: 120,
-    prerequisites: ['react-basics'],
+    prerequisites: ['React Fundamentals'],
     leads_to: ['react-context', 'react-performance']
   },
   'react-state': {
-    name: 'State Management',
+    name: 'Advanced State Management',
     category: 'React',
     difficulty: 'intermediate',
     estimatedTime: 140,
-    prerequisites: ['react-basics', 'react-hooks'],
+    prerequisites: ['React Fundamentals', 'React Hooks'],
     leads_to: ['react-redux', 'react-context']
   },
   'css-basics': {
@@ -105,11 +201,11 @@ const TOPIC_KNOWLEDGE_GRAPH = {
     leads_to: ['css-flexbox', 'css-grid']
   },
   'css-flexbox': {
-    name: 'CSS Flexbox',
+    name: 'CSS Flexbox Layout',
     category: 'CSS',
     difficulty: 'beginner',
     estimatedTime: 80,
-    prerequisites: ['css-basics'],
+    prerequisites: ['CSS Fundamentals'],
     leads_to: ['css-grid', 'css-responsive']
   },
   'css-grid': {
@@ -117,7 +213,7 @@ const TOPIC_KNOWLEDGE_GRAPH = {
     category: 'CSS',
     difficulty: 'intermediate',
     estimatedTime: 100,
-    prerequisites: ['css-basics', 'css-flexbox'],
+    prerequisites: ['CSS Fundamentals', 'CSS Flexbox'],
     leads_to: ['css-responsive', 'css-animations']
   },
   'typescript-basics': {
@@ -125,221 +221,117 @@ const TOPIC_KNOWLEDGE_GRAPH = {
     category: 'TypeScript',
     difficulty: 'intermediate',
     estimatedTime: 160,
-    prerequisites: ['javascript-basics', 'javascript-es6'],
+    prerequisites: ['JavaScript Fundamentals', 'ES6+ Features'],
     leads_to: ['typescript-advanced', 'react-typescript']
   },
   'node-basics': {
-    name: 'Node.js Fundamentals',
+    name: 'Node.js & Express',
     category: 'Backend',
     difficulty: 'intermediate',
     estimatedTime: 140,
-    prerequisites: ['javascript-basics', 'javascript-async'],
+    prerequisites: ['JavaScript Fundamentals', 'Async JavaScript'],
     leads_to: ['node-express', 'node-database']
   }
 };
 
-class TensorFlowRecommender {
-  private model: tf.LayersModel | null = null;
-  private topicEmbeddings: Map<string, number[]> = new Map();
-  private userEmbeddings: Map<string, number[]> = new Map();
+function getFallbackRecommendations(
+  skillLevel: string,
+  preferredTopics: string[],
+  topicHistory: UserTopicHistory[]
+): TopicRecommendation[] {
+  const completedTopics = topicHistory.map(h => h.topicName.toLowerCase());
+  const completedCategories = new Set(topicHistory.map(h => h.category));
+  
+  const recommendations: TopicRecommendation[] = [
+    {
+      topicId: 'react-hooks-deep',
+      topicName: 'React Hooks Deep Dive',
+      category: 'React',
+      difficulty: skillLevel === 'beginner' ? 'intermediate' : skillLevel,
+      estimatedTime: 120,
+      confidence: 0.85,
+      reasoning: 'Essential for modern React development. Hooks are fundamental to building efficient, reusable components.',
+      prerequisites: ['React Fundamentals']
+    },
+    {
+      topicId: 'async-javascript',
+      topicName: 'Async JavaScript & Promises',
+      category: 'JavaScript',
+      difficulty: skillLevel === 'beginner' ? 'intermediate' : skillLevel,
+      estimatedTime: 90,
+      confidence: 0.80,
+      reasoning: 'Critical for handling API calls and asynchronous operations in modern web development.',
+      prerequisites: ['JavaScript Fundamentals']
+    },
+    {
+      topicId: 'css-grid-layout',
+      topicName: 'CSS Grid Layout',
+      category: 'CSS',
+      difficulty: skillLevel === 'advanced' ? 'intermediate' : skillLevel,
+      estimatedTime: 75,
+      confidence: 0.75,
+      reasoning: 'Modern layout system that complements Flexbox for creating complex, responsive designs.',
+      prerequisites: ['CSS Basics', 'CSS Flexbox']
+    },
+    {
+      topicId: 'typescript-fundamentals',
+      topicName: 'TypeScript Fundamentals',
+      category: 'TypeScript',
+      difficulty: 'intermediate',
+      estimatedTime: 160,
+      confidence: 0.78,
+      reasoning: 'Add type safety to JavaScript projects and improve code quality and developer experience.',
+      prerequisites: ['JavaScript Fundamentals', 'ES6+ Features']
+    },
+    {
+      topicId: 'node-express-server',
+      topicName: 'Node.js & Express Server',
+      category: 'Backend',
+      difficulty: 'intermediate',
+      estimatedTime: 140,
+      confidence: 0.72,
+      reasoning: 'Learn server-side development to build full-stack applications and APIs.',
+      prerequisites: ['JavaScript Fundamentals', 'Async JavaScript']
+    },
+    {
+      topicId: 'testing-fundamentals',
+      topicName: 'Testing with Jest & React Testing Library',
+      category: 'Testing',
+      difficulty: skillLevel === 'beginner' ? 'intermediate' : skillLevel,
+      estimatedTime: 100,
+      confidence: 0.70,
+      reasoning: 'Essential skill for writing reliable, maintainable code and preventing bugs.',
+      prerequisites: ['JavaScript Fundamentals', 'React Fundamentals']
+    }
+  ];
 
-  constructor() {
-    this.initializeEmbeddings();
-  }
-
-  private initializeEmbeddings() {
-    // Create topic embeddings based on category, difficulty, and relationships
-    const topics = Object.keys(TOPIC_KNOWLEDGE_GRAPH);
-    const categories = ['JavaScript', 'React', 'CSS', 'TypeScript', 'Backend'];
-    const difficulties = ['beginner', 'intermediate', 'advanced'];
-
-    topics.forEach(topicId => {
-      const topic = TOPIC_KNOWLEDGE_GRAPH[topicId as keyof typeof TOPIC_KNOWLEDGE_GRAPH];
-      const embedding = [
-        // Category one-hot encoding
-        ...categories.map(cat => cat === topic.category ? 1 : 0),
-        // Difficulty encoding
-        ...difficulties.map(diff => diff === topic.difficulty ? 1 : 0),
-        // Time complexity (normalized)
-        topic.estimatedTime / 200,
-        // Prerequisites count (normalized)
-        topic.prerequisites.length / 5,
-        // Leads to count (normalized)
-        topic.leads_to.length / 5,
-        // Random features for diversity
-        Math.random() * 0.1,
-        Math.random() * 0.1
-      ];
-      
-      this.topicEmbeddings.set(topicId, embedding);
-    });
-  }
-
-  private createUserEmbedding(topicHistory: UserTopicHistory[], skillLevel: string, preferredTopics: string[]): number[] {
-    const categories = ['JavaScript', 'React', 'CSS', 'TypeScript', 'Backend'];
-    const difficulties = ['beginner', 'intermediate', 'advanced'];
-    
-    // Calculate user preferences based on history
-    const categoryScores = categories.map(cat => {
-      const categoryTopics = topicHistory.filter(t => t.category === cat);
-      if (categoryTopics.length === 0) return 0;
-      return categoryTopics.reduce((sum, t) => sum + t.score, 0) / categoryTopics.length / 100;
-    });
-
-    const difficultyPreference = difficulties.map(diff => diff === skillLevel ? 1 : 0);
-    
-    // Time spent patterns
-    const avgTimeSpent = topicHistory.length > 0 
-      ? topicHistory.reduce((sum, t) => sum + t.timeSpent, 0) / topicHistory.length / 120 
-      : 0.5;
-
-    // Recent activity bias
-    const recentActivityBias = topicHistory.length > 0 ? 1 : 0;
-
-    // Preferred topics influence
-    const preferredTopicsBias = preferredTopics.length / 5;
-
-    return [
-      ...categoryScores,
-      ...difficultyPreference,
-      avgTimeSpent,
-      recentActivityBias,
-      preferredTopicsBias,
-      Math.random() * 0.05 // Small random component for exploration
-    ];
-  }
-
-  private calculateSimilarity(userEmbedding: number[], topicEmbedding: number[]): number {
-    // Cosine similarity
-    const dotProduct = userEmbedding.reduce((sum, val, i) => sum + val * topicEmbedding[i], 0);
-    const userMagnitude = Math.sqrt(userEmbedding.reduce((sum, val) => sum + val * val, 0));
-    const topicMagnitude = Math.sqrt(topicEmbedding.reduce((sum, val) => sum + val * val, 0));
-    
-    if (userMagnitude === 0 || topicMagnitude === 0) return 0;
-    return dotProduct / (userMagnitude * topicMagnitude);
-  }
-
-  private checkPrerequisites(topicId: string, completedTopics: string[]): boolean {
-    const topic = TOPIC_KNOWLEDGE_GRAPH[topicId as keyof typeof TOPIC_KNOWLEDGE_GRAPH];
-    if (!topic) return false;
-    
-    return topic.prerequisites.every(prereq => completedTopics.includes(prereq));
-  }
-
-  private generateReasoning(topicId: string, userHistory: UserTopicHistory[], confidence: number): string {
-    const topic = TOPIC_KNOWLEDGE_GRAPH[topicId as keyof typeof TOPIC_KNOWLEDGE_GRAPH];
-    if (!topic) return "Recommended based on your learning pattern.";
-
-    const categoryHistory = userHistory.filter(h => h.category === topic.category);
-    const avgScore = categoryHistory.length > 0 
-      ? categoryHistory.reduce((sum, h) => sum + h.score, 0) / categoryHistory.length 
-      : 0;
-
-    if (topic.prerequisites.length > 0) {
-      return `Perfect next step after completing ${topic.prerequisites.join(', ')}. Your ${avgScore.toFixed(0)}% average in ${topic.category} shows you're ready for this ${topic.difficulty} level topic.`;
+  // Filter based on preferred topics and completed work
+  const filteredRecommendations = recommendations.filter(rec => {
+    // Don't recommend topics already completed
+    if (completedTopics.some(topic => rec.topicName.toLowerCase().includes(topic))) {
+      return false;
     }
 
-    if (confidence > 0.8) {
-      return `Highly recommended based on your strong performance in ${topic.category}. This ${topic.difficulty} topic aligns perfectly with your learning pattern.`;
-    }
+    // Prefer topics that match user's interests
+    const matchesPreferences = preferredTopics.some(topic => 
+      rec.category.toLowerCase().includes(topic.toLowerCase()) ||
+      rec.topicName.toLowerCase().includes(topic.toLowerCase())
+    );
 
-    if (categoryHistory.length === 0) {
-      return `Great opportunity to explore ${topic.category}! This ${topic.difficulty} topic is an excellent starting point for expanding your skills.`;
-    }
+    // Include if matches preferences or if user has few completed topics
+    return matchesPreferences || topicHistory.length < 3;
+  });
 
-    return `Recommended to build upon your ${topic.category} knowledge. Your progress suggests you're ready for this ${topic.difficulty} challenge.`;
-  }
+  // Adjust confidence based on user's performance
+  const avgScore = topicHistory.length > 0 
+    ? topicHistory.reduce((sum, h) => sum + h.score, 0) / topicHistory.length 
+    : 70;
 
-  async recommend(request: RecommendationRequest): Promise<TopicRecommendation[]> {
-    try {
-      const { topicHistory, skillLevel, preferredTopics } = request;
-      
-      // Get completed topic IDs
-      const completedTopicIds = topicHistory.map(h => {
-        // Map topic names to IDs (simplified mapping)
-        const name = h.topicName.toLowerCase();
-        if (name.includes('javascript') && name.includes('basic')) return 'javascript-basics';
-        if (name.includes('dom')) return 'javascript-dom';
-        if (name.includes('async') || name.includes('promise')) return 'javascript-async';
-        if (name.includes('es6')) return 'javascript-es6';
-        if (name.includes('react') && name.includes('basic')) return 'react-basics';
-        if (name.includes('hook')) return 'react-hooks';
-        if (name.includes('state')) return 'react-state';
-        if (name.includes('css') && name.includes('basic')) return 'css-basics';
-        if (name.includes('flexbox')) return 'css-flexbox';
-        if (name.includes('grid')) return 'css-grid';
-        if (name.includes('typescript')) return 'typescript-basics';
-        if (name.includes('node')) return 'node-basics';
-        return null;
-      }).filter(Boolean) as string[];
-
-      // Create user embedding
-      const userEmbedding = this.createUserEmbedding(topicHistory, skillLevel, preferredTopics);
-
-      // Calculate recommendations
-      const recommendations: Array<{topicId: string, confidence: number}> = [];
-      
-      for (const [topicId, topicEmbedding] of this.topicEmbeddings.entries()) {
-        // Skip already completed topics
-        if (completedTopicIds.includes(topicId)) continue;
-        
-        // Check prerequisites
-        if (!this.checkPrerequisites(topicId, completedTopicIds)) continue;
-        
-        // Calculate similarity score
-        const similarity = this.calculateSimilarity(userEmbedding, topicEmbedding);
-        
-        // Add some randomness for exploration vs exploitation
-        const explorationBonus = Math.random() * 0.1;
-        const confidence = Math.min(similarity + explorationBonus, 1);
-        
-        recommendations.push({ topicId, confidence });
-      }
-
-      // Sort by confidence and take top 3
-      recommendations.sort((a, b) => b.confidence - a.confidence);
-      const topRecommendations = recommendations.slice(0, 3);
-
-      // Convert to full recommendation objects
-      return topRecommendations.map(rec => {
-        const topic = TOPIC_KNOWLEDGE_GRAPH[rec.topicId as keyof typeof TOPIC_KNOWLEDGE_GRAPH];
-        return {
-          topicId: rec.topicId,
-          topicName: topic.name,
-          category: topic.category,
-          difficulty: topic.difficulty,
-          estimatedTime: topic.estimatedTime,
-          confidence: rec.confidence,
-          reasoning: this.generateReasoning(rec.topicId, topicHistory, rec.confidence),
-          prerequisites: topic.prerequisites
-        };
-      });
-
-    } catch (error) {
-      console.error('Recommendation error:', error);
-      
-      // Fallback recommendations based on skill level
-      const fallbackTopics = skillLevel === 'beginner' 
-        ? ['javascript-basics', 'css-basics', 'javascript-dom']
-        : skillLevel === 'intermediate'
-        ? ['react-basics', 'javascript-async', 'css-flexbox']
-        : ['typescript-basics', 'react-hooks', 'node-basics'];
-
-      return fallbackTopics.map(topicId => {
-        const topic = TOPIC_KNOWLEDGE_GRAPH[topicId as keyof typeof TOPIC_KNOWLEDGE_GRAPH];
-        return {
-          topicId,
-          topicName: topic.name,
-          category: topic.category,
-          difficulty: topic.difficulty,
-          estimatedTime: topic.estimatedTime,
-          confidence: 0.7,
-          reasoning: `Recommended for ${skillLevel} level learners.`,
-          prerequisites: topic.prerequisites
-        };
-      });
-    }
-  }
+  return filteredRecommendations.slice(0, 3).map(rec => ({
+    ...rec,
+    confidence: Math.min(rec.confidence + (avgScore > 80 ? 0.1 : 0), 1),
+    reasoning: `${rec.reasoning} Based on your ${avgScore.toFixed(0)}% average score, this topic is well-suited for your current level.`
+  }));
 }
 
 serve(async (req) => {
@@ -361,16 +353,12 @@ serve(async (req) => {
       )
     }
 
-    // Initialize TensorFlow recommender
-    const recommender = new TensorFlowRecommender();
-    
-    // Get recommendations
-    const recommendations = await recommender.recommend({
-      userId,
+    // Get recommendations using Mistral AI or fallback
+    const recommendations = await generateMistralRecommendations(
       topicHistory,
-      skillLevel: skillLevel || 'beginner',
-      preferredTopics: preferredTopics || []
-    });
+      skillLevel || 'beginner',
+      preferredTopics || []
+    );
 
     console.log(`Generated ${recommendations.length} recommendations for user ${userId}`);
 
@@ -379,7 +367,8 @@ serve(async (req) => {
         success: true, 
         recommendations,
         timestamp: new Date().toISOString(),
-        model_version: '1.0.0'
+        model_version: '1.0.0',
+        ai_provider: Deno.env.get('MISTRAL_API_KEY') ? 'mistral' : 'fallback'
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

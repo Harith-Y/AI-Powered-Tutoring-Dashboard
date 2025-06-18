@@ -40,8 +40,43 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
 }
 
-// Simple text embedding function (in production, use OpenAI embeddings)
-function createTextEmbedding(text: string): number[] {
+// Mistral AI embedding function
+async function createMistralEmbedding(text: string): Promise<number[]> {
+  const mistralApiKey = Deno.env.get('MISTRAL_API_KEY');
+  
+  if (!mistralApiKey) {
+    console.log('Mistral API key not found, using simple embedding');
+    return createSimpleEmbedding(text);
+  }
+
+  try {
+    const response = await fetch('https://api.mistral.ai/v1/embeddings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${mistralApiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'mistral-embed',
+        input: [text],
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('Mistral embedding API error:', await response.text());
+      return createSimpleEmbedding(text);
+    }
+
+    const data = await response.json();
+    return data.data[0]?.embedding || createSimpleEmbedding(text);
+  } catch (error) {
+    console.error('Error calling Mistral embedding API:', error);
+    return createSimpleEmbedding(text);
+  }
+}
+
+// Fallback simple embedding function
+function createSimpleEmbedding(text: string): number[] {
   const words = text.toLowerCase().split(/\s+/);
   const embedding = new Array(384).fill(0); // 384-dimensional embedding
   
@@ -222,7 +257,7 @@ async function retrieveFromPinecone(request: RetrieveMemoryRequest): Promise<Pin
       ];
     }
 
-    const queryEmbedding = createTextEmbedding(`${request.currentQuestion} ${request.topic}`);
+    const queryEmbedding = await createMistralEmbedding(`${request.currentQuestion} ${request.topic}`);
     const pineconeUrl = `https://${pineconeIndexName}-${pineconeEnvironment}.pinecone.io/query`;
 
     const response = await fetch(pineconeUrl, {
@@ -267,9 +302,9 @@ serve(async (req) => {
     if (action === 'store' && req.method === 'POST') {
       const memoryEvent: MemoryEvent = await req.json();
 
-      // Create embedding for the question + topic
+      // Create embedding for the question + topic using Mistral AI
       const textToEmbed = `${memoryEvent.question} ${memoryEvent.topic} ${memoryEvent.response}`;
-      const embedding = createTextEmbedding(textToEmbed);
+      const embedding = await createMistralEmbedding(textToEmbed);
 
       // Create vector for Pinecone
       const vector: PineconeVector = {
@@ -294,7 +329,8 @@ serve(async (req) => {
         JSON.stringify({ 
           success, 
           vectorId: vector.id,
-          message: success ? 'Memory stored successfully' : 'Failed to store memory'
+          message: success ? 'Memory stored successfully' : 'Failed to store memory',
+          embeddingSource: Deno.env.get('MISTRAL_API_KEY') ? 'mistral' : 'fallback'
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -320,7 +356,8 @@ serve(async (req) => {
         JSON.stringify({ 
           success: true, 
           memories: contextMemories,
-          count: contextMemories.length
+          count: contextMemories.length,
+          embeddingSource: Deno.env.get('MISTRAL_API_KEY') ? 'mistral' : 'fallback'
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );

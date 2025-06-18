@@ -5,7 +5,7 @@ A comprehensive AI-powered learning platform with personalized tutoring, intelli
 ## Features
 
 - **AI Mentor Chat**: Memory-enhanced conversational AI with RAG-powered resource recommendations
-- **Intelligent Weekly Planner**: TensorFlow-powered topic recommendations and automated scheduling
+- **Intelligent Weekly Planner**: AI-powered topic recommendations and automated scheduling
 - **Progress Analytics**: Comprehensive learning analytics and achievement tracking
 - **Adaptive Learning**: Content difficulty adapts to user skill level and performance
 - **Resource Recommendations**: Curated learning materials from GitHub, Stack Overflow, and educational content
@@ -14,7 +14,7 @@ A comprehensive AI-powered learning platform with personalized tutoring, intelli
 
 - **Frontend**: React 18, TypeScript, Tailwind CSS
 - **Backend**: Firebase (Auth, Firestore)
-- **AI/ML**: TensorFlow.js, Pinecone Vector Database
+- **AI/ML**: Mistral AI, Pinecone Vector Database
 - **Edge Functions**: Supabase Edge Functions
 - **Deployment**: Netlify
 
@@ -43,16 +43,17 @@ VITE_SUPABASE_URL=your-supabase-url
 VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
 ```
 
+### Mistral AI Configuration
+```env
+MISTRAL_API_KEY=your-mistral-api-key
+MISTRAL_MODEL=mistral-large-latest
+```
+
 ### Pinecone Configuration (for Memory Service)
 ```env
 PINECONE_API_KEY=your-pinecone-api-key
 PINECONE_ENVIRONMENT=us-east1-gcp
 PINECONE_INDEX_NAME=ai-tutor-memory
-```
-
-### Optional: OpenAI Configuration
-```env
-OPENAI_API_KEY=your-openai-api-key
 ```
 
 ## Getting Started
@@ -68,17 +69,22 @@ OPENAI_API_KEY=your-openai-api-key
    - Create a Firestore database
    - Copy your config to `.env`
 
-3. **Set up Supabase** (optional, for advanced AI features):
+3. **Set up Mistral AI**:
+   - Create a Mistral AI account at [console.mistral.ai](https://console.mistral.ai)
+   - Generate an API key
+   - Add your API key to `.env`
+
+4. **Set up Supabase** (optional, for advanced AI features):
    - Create a Supabase project
    - Deploy the edge functions in `/supabase/functions/`
    - Copy your config to `.env`
 
-4. **Set up Pinecone** (optional, for memory-enhanced chat):
+5. **Set up Pinecone** (optional, for memory-enhanced chat):
    - Create a Pinecone account
    - Create an index named `ai-tutor-memory`
    - Copy your API key to `.env`
 
-5. **Start development server**:
+6. **Start development server**:
    ```bash
    npm run dev
    ```
@@ -96,22 +102,44 @@ npm run build
 ### AI Features
 
 1. **Memory-Enhanced Chat**: Uses Pinecone vector database to store and retrieve conversation context
-2. **Topic Recommendations**: TensorFlow.js models analyze learning patterns to suggest next topics
+2. **Topic Recommendations**: Mistral AI analyzes learning patterns to suggest next topics
 3. **RAG-Powered Resources**: Retrieval-augmented generation finds relevant learning materials
 4. **Adaptive Difficulty**: Content difficulty adjusts based on user performance and skill level
 
 ### Data Flow
 
 1. User interactions → Firebase Firestore
-2. Chat conversations → Pinecone vector storage
+2. Chat conversations → Pinecone vector storage (with Mistral AI embeddings)
 3. Learning analytics → Real-time dashboard updates
-4. AI recommendations → Personalized learning paths
+4. AI recommendations → Personalized learning paths (powered by Mistral AI)
+
+## Mistral AI Integration
+
+This application uses Mistral AI for:
+
+- **Conversational AI**: Personalized tutoring responses adapted to user skill level
+- **Topic Recommendations**: Intelligent analysis of learning history to suggest next topics
+- **Text Embeddings**: High-quality embeddings for memory storage and retrieval
+- **Content Generation**: Dynamic explanations and learning guidance
+
+### Mistral AI Models Used
+
+- **mistral-large-latest**: For conversational AI and topic recommendations
+- **mistral-embed**: For generating text embeddings for memory storage
+
+### Cost Optimization
+
+- Fallback mechanisms when API is unavailable
+- Smart caching of responses
+- Efficient prompt engineering to minimize token usage
+- Local embeddings as fallback for development
 
 ## Security
 
 - All sensitive credentials are stored in environment variables
 - Firebase security rules protect user data
 - Supabase RLS policies secure edge functions
+- Mistral AI API keys are server-side only
 - Client-side validation with server-side verification
 
 ## Development
@@ -122,18 +150,36 @@ src/
 ├── components/          # React components
 ├── context/            # React context providers
 ├── services/           # API and database services
+│   ├── mistralService.ts    # Mistral AI integration
+│   ├── memoryService.ts     # Memory management
+│   └── firestore.ts         # Database operations
 ├── types/              # TypeScript type definitions
 └── firebase/           # Firebase configuration
 
 supabase/
 └── functions/          # Edge functions for AI features
+    ├── pinecone-memory/     # Memory storage with Mistral embeddings
+    └── topic-recommendations/ # AI-powered recommendations
 ```
 
 ### Key Services
 
+- `mistralService.ts`: Mistral AI integration for chat and recommendations
+- `memoryService.ts`: AI memory management with Pinecone
 - `firestore.ts`: Database operations
-- `memoryService.ts`: AI memory management
 - `AuthContext.tsx`: Authentication state management
+
+## API Costs
+
+### Mistral AI Pricing (as of 2024)
+- **mistral-large-latest**: ~$8 per 1M tokens
+- **mistral-embed**: ~$0.1 per 1M tokens
+
+### Cost Optimization Features
+- Intelligent caching to reduce API calls
+- Fallback to local algorithms when API is unavailable
+- Efficient prompt engineering
+- User-based rate limiting
 
 ## Contributing
 
@@ -146,3 +192,11 @@ supabase/
 ## License
 
 MIT License - see LICENSE file for details
+
+## Support
+
+For issues related to:
+- **Mistral AI**: Check [Mistral AI Documentation](https://docs.mistral.ai/)
+- **Firebase**: Check [Firebase Documentation](https://firebase.google.com/docs)
+- **Pinecone**: Check [Pinecone Documentation](https://docs.pinecone.io/)
+- **Application**: Create an issue in this repository

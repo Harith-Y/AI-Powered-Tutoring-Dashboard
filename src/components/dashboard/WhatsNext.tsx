@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Brain, Clock, Star, Plus, CheckCircle, Lightbulb, TrendingUp, Target, AlertCircle } from 'lucide-react';
 import { addWeeklyPlanItem } from '../../services/firestore';
+import { mistralService } from '../../services/mistralService';
 
 interface TopicRecommendation {
   topicId: string;
@@ -28,70 +29,40 @@ const WhatsNext: React.FC = () => {
     setError(null);
     
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-      if (!supabaseUrl || !anonKey) {
-        console.warn('Supabase configuration missing. Using fallback recommendations.');
-        setRecommendations(getFallbackRecommendations());
-        setLoading(false);
-        return;
-      }
-
-      // Prepare topic history for the ML model
+      // Prepare topic history for the AI model
       const topicHistory = (userProgress || []).map(progress => ({
-        topicId: progress.topicId,
         topicName: progress.topicName,
         category: progress.category,
         score: progress.score,
-        timeSpent: progress.timeSpent,
-        difficulty: progress.difficulty,
-        completedAt: progress.completedAt.toISOString()
+        difficulty: progress.difficulty
       }));
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      if (mistralService.isConfigured()) {
+        // Use Mistral AI for recommendations
+        const aiRecommendations = await mistralService.generateTopicRecommendations(
+          topicHistory,
+          userProfile.skillLevel,
+          userProfile.preferredTopics || []
+        );
 
-      try {
-        const response = await fetch(`${supabaseUrl}/functions/v1/topic-recommendations`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${anonKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            userId: currentUser.uid,
-            topicHistory,
-            skillLevel: userProfile.skillLevel,
-            preferredTopics: userProfile.preferredTopics
-          }),
-          signal: controller.signal
-        });
+        // Convert AI recommendations to our format
+        const formattedRecommendations: TopicRecommendation[] = aiRecommendations.map((rec, index) => ({
+          topicId: `ai-${Date.now()}-${index}`,
+          topicName: rec.topicName,
+          category: rec.category,
+          difficulty: rec.difficulty,
+          estimatedTime: getDifficultyTime(rec.difficulty),
+          confidence: rec.confidence,
+          reasoning: rec.reasoning,
+          prerequisites: getPrerequisites(rec.topicName, rec.category)
+        }));
 
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          throw new Error(`Edge function returned ${response.status}: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        
-        if (data.success && data.recommendations) {
-          setRecommendations(data.recommendations);
-        } else {
-          throw new Error(data.error || 'Failed to get recommendations from edge function');
-        }
-      } catch (fetchError) {
-        clearTimeout(timeoutId);
-        
-        if (fetchError instanceof Error) {
-          if (fetchError.name === 'AbortError') {
-            throw new Error('Request timed out - edge function may not be deployed');
-          } else if (fetchError.message.includes('Failed to fetch')) {
-            throw new Error('Cannot connect to Supabase edge functions - they may not be deployed');
-          }
-        }
-        throw fetchError;
+        setRecommendations(formattedRecommendations);
+      } else {
+        // Fallback to rule-based recommendations
+        console.warn('Mistral AI not configured, using fallback recommendations');
+        setRecommendations(getFallbackRecommendations());
+        setError('Mistral AI not configured. Using smart recommendations based on your progress.');
       }
     } catch (error) {
       console.error('Error fetching recommendations:', error);
@@ -100,6 +71,40 @@ const WhatsNext: React.FC = () => {
       setRecommendations(getFallbackRecommendations());
     } finally {
       setLoading(false);
+    }
+  };
+
+  const getDifficultyTime = (difficulty: string): number => {
+    switch (difficulty) {
+      case 'beginner': return 90;
+      case 'intermediate': return 120;
+      case 'advanced': return 180;
+      default: return 120;
+    }
+  };
+
+  const getPrerequisites = (topicName: string, category: string): string[] => {
+    const prerequisites: Record<string, string[]> = {
+      'React Hooks': ['React Basics', 'JavaScript ES6'],
+      'Async JavaScript': ['JavaScript Fundamentals'],
+      'TypeScript': ['JavaScript Fundamentals'],
+      'Node.js': ['JavaScript Fundamentals', 'Async JavaScript'],
+      'CSS Grid': ['CSS Basics'],
+      'Testing': ['JavaScript Fundamentals'],
+    };
+
+    for (const [topic, prereqs] of Object.entries(prerequisites)) {
+      if (topicName.includes(topic)) {
+        return prereqs;
+      }
+    }
+
+    // Default prerequisites based on category
+    switch (category) {
+      case 'React': return ['JavaScript Fundamentals'];
+      case 'Advanced JavaScript': return ['JavaScript Fundamentals'];
+      case 'Backend': return ['JavaScript Fundamentals'];
+      default: return [];
     }
   };
 
@@ -266,7 +271,7 @@ const WhatsNext: React.FC = () => {
           <div>
             <h2 className="text-xl font-semibold text-gray-900">What's Next?</h2>
             <p className="text-sm text-gray-600">
-              {error ? 'Smart recommendations based on your progress' : 'AI-powered recommendations based on your progress'}
+              {error ? 'Smart recommendations based on your progress' : 'Mistral AI-powered recommendations based on your progress'}
             </p>
           </div>
         </div>
@@ -288,7 +293,10 @@ const WhatsNext: React.FC = () => {
             <span className="font-medium text-amber-800">Using Offline Mode</span>
           </div>
           <p className="text-sm text-amber-700 mb-2">
-            Unable to connect to AI recommendation service. Showing smart recommendations based on your progress.
+            {error.includes('not configured') 
+              ? 'Mistral AI is not configured. Add your MISTRAL_API_KEY to enable AI-powered recommendations.'
+              : 'Unable to connect to Mistral AI service. Showing smart recommendations based on your progress.'
+            }
           </p>
           <details className="text-xs text-amber-600">
             <summary className="cursor-pointer hover:text-amber-800">Technical details</summary>
@@ -374,7 +382,7 @@ const WhatsNext: React.FC = () => {
                   <div className="flex items-center space-x-2">
                     <Lightbulb className="w-4 h-4 text-indigo-500" />
                     <span className="text-xs text-gray-500">
-                      {error ? 'Smart Algorithm' : 'Powered by TensorFlow Recommenders'}
+                      {error ? 'Smart Algorithm' : `Powered by ${mistralService.getModel()}`}
                     </span>
                   </div>
                   
@@ -414,9 +422,9 @@ const WhatsNext: React.FC = () => {
         </div>
         <p className="text-sm text-purple-700">
           {error ? (
-            'Our smart recommendation system analyzes your learning history, skill level, and preferences to suggest relevant next topics. When AI services are available, we use TensorFlow-powered analysis for even more personalized recommendations.'
+            'Our smart recommendation system analyzes your learning history, skill level, and preferences to suggest relevant next topics. When Mistral AI is configured, we use advanced language models for even more personalized recommendations.'
           ) : (
-            'Our TensorFlow-powered recommendation engine analyzes your learning history, skill level, and preferences to suggest the most relevant next topics. Each recommendation includes confidence scores and reasoning to help you make informed learning decisions.'
+            `Our Mistral AI-powered recommendation engine (${mistralService.getModel()}) analyzes your learning history, skill level, and preferences to suggest the most relevant next topics. Each recommendation includes confidence scores and reasoning to help you make informed learning decisions.`
           )}
         </p>
       </div>

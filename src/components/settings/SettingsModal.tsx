@@ -68,7 +68,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   ];
 
   const renderProfileTab = () => (
-    <div className="space-y-6">
+    <div className="space-responsive">
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Profile Information</h3>
         <div className="space-y-4">
@@ -78,7 +78,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               type="text"
               value={displayName}
               disabled
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
+              className="input-modern bg-gray-50 text-gray-500"
             />
             <p className="text-xs text-gray-500 mt-1">Contact support to change your display name</p>
           </div>
@@ -88,14 +88,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               type="email"
               value={email}
               disabled
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
+              className="input-modern bg-gray-50 text-gray-500"
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Skill Level</label>
-            <div className="flex space-x-4">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
               {['beginner', 'intermediate', 'advanced'].map((level) => (
-                <label key={level} className="flex items-center">
+                <label key={level} className="flex items-center touch-target">
                   <input
                     type="radio"
                     name="skillLevel"
@@ -115,7 +115,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               type="text"
               value={userProfile?.createdAt ? userProfile.createdAt.toLocaleDateString() : 'Recently joined'}
               disabled
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
+              className="input-modern bg-gray-50 text-gray-500"
             />
           </div>
           <div>
@@ -124,7 +124,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               type="text"
               value={userProfile?.lastLoginAt ? userProfile.lastLoginAt.toLocaleDateString() : 'Today'}
               disabled
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
+              className="input-modern bg-gray-50 text-gray-500"
             />
           </div>
         </div>
@@ -133,15 +133,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   );
 
   const renderLearningTab = () => (
-    <div className="space-y-6">
+    <div className="space-responsive">
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Learning Preferences</h3>
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Preferred Topics</label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {topicOptions.map((topic) => (
-                <label key={topic} className="flex items-center">
+                <label key={topic} className="flex items-center touch-target">
                   <input
                     type="checkbox"
                     checked={localPreferences.preferredTopics.includes(topic)}
@@ -170,7 +170,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
             <select
               value={localPreferences.learningStyle}
               onChange={(e) => setLocalPreferences(prev => ({ ...prev, learningStyle: e.target.value as any }))}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="input-modern"
             >
               <option value="visual">Visual (diagrams, charts, images)</option>
               <option value="auditory">Auditory (listening, discussion)</option>
@@ -184,7 +184,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   );
 
   const renderScheduleTab = () => (
-    <div className="space-y-6">
+    <div className="space-responsive">
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Study Schedule</h3>
         <div className="space-y-4">
@@ -208,9 +208,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Study Days</label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {weekDays.map((day) => (
-                <label key={day.id} className="flex items-center">
+                <label key={day.id} className="flex items-center touch-target">
                   <input
                     type="checkbox"
                     checked={localPreferences.studyDays.includes(day.id)}
@@ -239,7 +239,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
             <select
               value={localPreferences.preferredStudyTime}
               onChange={(e) => setLocalPreferences(prev => ({ ...prev, preferredStudyTime: e.target.value as any }))}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="input-modern"
             >
               <option value="morning">Morning (6 AM - 12 PM)</option>
               <option value="afternoon">Afternoon (12 PM - 6 PM)</option>
@@ -252,11 +252,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   );
 
   const renderNotificationsTab = () => (
-    <div className="space-y-6">
+    <div className="space-responsive">
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Notification Settings</h3>
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
             <div>
               <h4 className="font-medium text-gray-900">Push Notifications</h4>
               <p className="text-sm text-gray-500">Receive notifications about your learning progress</p>
@@ -271,7 +271,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
             </label>
           </div>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
             <div>
               <h4 className="font-medium text-gray-900">Study Reminders</h4>
               <p className="text-sm text-gray-500">Get reminded when it's time to study</p>
@@ -286,7 +286,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
             </label>
           </div>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
             <div>
               <h4 className="font-medium text-gray-900">Achievement Notifications</h4>
               <p className="text-sm text-gray-500">Celebrate your learning milestones</p>
@@ -307,34 +307,34 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   );
 
   const renderAppearanceTab = () => (
-    <div className="space-y-6">
+    <div className="space-responsive">
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Appearance</h3>
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Theme</label>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="border border-gray-300 rounded-lg p-4 cursor-pointer hover:border-indigo-500">
-                <div className="w-full h-16 bg-white border border-gray-200 rounded mb-2"></div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="border border-gray-300 rounded-lg p-4 cursor-pointer hover:border-indigo-500 touch-target">
+                <div className="w-full h-12 sm:h-16 bg-white border border-gray-200 rounded mb-2"></div>
                 <p className="text-sm text-center">Light</p>
               </div>
-              <div className="border border-gray-300 rounded-lg p-4 cursor-pointer hover:border-indigo-500">
-                <div className="w-full h-16 bg-gray-800 border border-gray-600 rounded mb-2"></div>
+              <div className="border border-gray-300 rounded-lg p-4 cursor-pointer hover:border-indigo-500 touch-target">
+                <div className="w-full h-12 sm:h-16 bg-gray-800 border border-gray-600 rounded mb-2"></div>
                 <p className="text-sm text-center">Dark</p>
               </div>
-              <div className="border border-gray-300 rounded-lg p-4 cursor-pointer hover:border-indigo-500">
-                <div className="w-full h-16 bg-gradient-to-r from-white to-gray-800 rounded mb-2"></div>
+              <div className="border border-gray-300 rounded-lg p-4 cursor-pointer hover:border-indigo-500 touch-target">
+                <div className="w-full h-12 sm:h-16 bg-gradient-to-r from-white to-gray-800 rounded mb-2"></div>
                 <p className="text-sm text-center">Auto</p>
               </div>
             </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Accent Color</label>
-            <div className="flex space-x-2">
+            <div className="flex flex-wrap gap-2">
               {['indigo', 'blue', 'purple', 'pink', 'emerald', 'orange'].map((color) => (
                 <button
                   key={color}
-                  className={`w-8 h-8 rounded-full bg-${color}-500 hover:scale-110 transition-transform`}
+                  className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-${color}-500 hover:scale-110 transition-transform touch-target`}
                 />
               ))}
             </div>
@@ -345,7 +345,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   );
 
   const renderPrivacyTab = () => (
-    <div className="space-y-6">
+    <div className="space-responsive">
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Privacy & Data</h3>
         <div className="space-y-4">
@@ -354,7 +354,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
             <p className="text-sm text-gray-600 mb-3">
               We collect learning progress data to provide personalized recommendations and improve your experience.
             </p>
-            <button className="text-indigo-600 hover:text-indigo-800 text-sm font-medium">
+            <button className="text-indigo-600 hover:text-indigo-800 text-sm font-medium touch-target">
               View Privacy Policy
             </button>
           </div>
@@ -363,7 +363,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
             <p className="text-sm text-gray-600 mb-3">
               Download all your learning data and progress in JSON format.
             </p>
-            <button className="text-indigo-600 hover:text-indigo-800 text-sm font-medium">
+            <button className="text-indigo-600 hover:text-indigo-800 text-sm font-medium touch-target">
               Export My Data
             </button>
           </div>
@@ -372,7 +372,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
             <p className="text-sm text-red-700 mb-3">
               Permanently delete your account and all associated data. This action cannot be undone.
             </p>
-            <button className="text-red-600 hover:text-red-800 text-sm font-medium">
+            <button className="text-red-600 hover:text-red-800 text-sm font-medium touch-target">
               Delete Account
             </button>
           </div>
@@ -394,65 +394,80 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-        <div className="flex h-full">
+    <div className="modal-responsive">
+      <div className="modal-content-large">
+        <div className="flex flex-col lg:flex-row h-full max-h-[95vh]">
           {/* Sidebar */}
-          <div className="w-64 bg-gray-50 border-r border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-gray-900">Settings</h2>
+          <div className="w-full lg:w-64 bg-gray-50 border-b lg:border-b-0 lg:border-r border-gray-200 p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Settings</h2>
               <button
                 onClick={onClose}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors touch-target"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
             
-            <nav className="space-y-2">
-              {tabs.map((tab) => {
-                const Icon = tab.icon;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`w-full flex items-center px-3 py-2 text-left rounded-lg transition-colors ${
-                      activeTab === tab.id
-                        ? 'bg-indigo-100 text-indigo-700'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    <Icon className="w-5 h-5 mr-3" />
-                    {tab.label}
-                  </button>
-                );
-              })}
+            <nav className="space-y-1 sm:space-y-2">
+              <div className="lg:hidden">
+                <select
+                  value={activeTab}
+                  onChange={(e) => setActiveTab(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                >
+                  {tabs.map((tab) => (
+                    <option key={tab.id} value={tab.id}>
+                      {tab.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="hidden lg:block">
+                {tabs.map((tab) => {
+                  const Icon = tab.icon;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`w-full flex items-center px-3 py-2 text-left rounded-lg transition-colors touch-target ${
+                        activeTab === tab.id
+                          ? 'bg-indigo-100 text-indigo-700'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      <Icon className="w-5 h-5 mr-3" />
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
             </nav>
           </div>
 
           {/* Content */}
-          <div className="flex-1 flex flex-col">
-            <div className="flex-1 p-6 overflow-y-auto">
+          <div className="flex-1 flex flex-col min-h-0">
+            <div className="flex-1 p-4 sm:p-6 overflow-y-auto">
               {renderTabContent()}
             </div>
             
             {/* Footer */}
-            <div className="border-t border-gray-200 p-6 bg-gray-50">
-              <div className="flex justify-end space-x-3">
+            <div className="border-t border-gray-200 p-4 sm:p-6 bg-gray-50">
+              <div className="flex flex-col sm:flex-row justify-end gap-3">
                 <button
                   onClick={onClose}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium transition-colors"
+                  className="btn-ghost order-2 sm:order-1"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSave}
                   disabled={loading}
-                  className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors flex items-center disabled:opacity-50"
+                  className="btn-primary order-1 sm:order-2 disabled:opacity-50"
                 >
                   {loading ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      <div className="spinner mr-2"></div>
                       Saving...
                     </>
                   ) : (

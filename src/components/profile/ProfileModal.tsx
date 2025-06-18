@@ -97,16 +97,16 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
   }, {} as Record<string, { count: number; totalScore: number; totalTime: number }>);
 
   const renderOverviewTab = () => (
-    <div className="space-y-6">
+    <div className="space-responsive">
       {/* Profile Header */}
       <div className="text-center">
-        <div className="w-24 h-24 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
-          <span className="text-3xl font-bold text-white">
+        <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+          <span className="text-2xl sm:text-3xl font-bold text-white">
             {displayName.charAt(0).toUpperCase()}
           </span>
         </div>
-        <h2 className="text-2xl font-bold text-gray-900">{displayName}</h2>
-        <p className="text-gray-600">{email}</p>
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 break-words">{displayName}</h2>
+        <p className="text-gray-600 break-words">{email}</p>
         <div className="mt-2">
           <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800 capitalize">
             {userProfile?.skillLevel || 'beginner'} Level
@@ -115,29 +115,29 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="text-center p-4 bg-gray-50 rounded-lg">
-          <div className="text-2xl font-bold text-indigo-600">{totalTopics}</div>
-          <div className="text-sm text-gray-600">Topics Completed</div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="text-center p-3 sm:p-4 bg-gray-50 rounded-lg">
+          <div className="text-xl sm:text-2xl font-bold text-indigo-600">{totalTopics}</div>
+          <div className="text-xs sm:text-sm text-gray-600">Topics Completed</div>
         </div>
-        <div className="text-center p-4 bg-gray-50 rounded-lg">
-          <div className="text-2xl font-bold text-emerald-600">{Math.round(averageScore)}%</div>
-          <div className="text-sm text-gray-600">Average Score</div>
+        <div className="text-center p-3 sm:p-4 bg-gray-50 rounded-lg">
+          <div className="text-xl sm:text-2xl font-bold text-emerald-600">{Math.round(averageScore)}%</div>
+          <div className="text-xs sm:text-sm text-gray-600">Average Score</div>
         </div>
-        <div className="text-center p-4 bg-gray-50 rounded-lg">
-          <div className="text-2xl font-bold text-orange-600">{Math.round(totalStudyTime / 60)}h</div>
-          <div className="text-sm text-gray-600">Study Time</div>
+        <div className="text-center p-3 sm:p-4 bg-gray-50 rounded-lg">
+          <div className="text-xl sm:text-2xl font-bold text-orange-600">{Math.round(totalStudyTime / 60)}h</div>
+          <div className="text-xs sm:text-sm text-gray-600">Study Time</div>
         </div>
-        <div className="text-center p-4 bg-gray-50 rounded-lg">
-          <div className="text-2xl font-bold text-red-600">{streakDays}</div>
-          <div className="text-sm text-gray-600">Day Streak</div>
+        <div className="text-center p-3 sm:p-4 bg-gray-50 rounded-lg">
+          <div className="text-xl sm:text-2xl font-bold text-red-600">{streakDays}</div>
+          <div className="text-xs sm:text-sm text-gray-600">Day Streak</div>
         </div>
       </div>
 
       {/* Learning Preferences */}
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Learning Preferences</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="p-4 bg-gray-50 rounded-lg">
             <h4 className="font-medium text-gray-900 mb-2">Preferred Topics</h4>
             <div className="flex flex-wrap gap-2">
@@ -162,14 +162,14 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
           <div className="space-y-3">
             {userProgress.slice(0, 5).map((progress, index) => (
               <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                  <div>
-                    <p className="font-medium text-gray-900">{progress.topicName}</p>
+                <div className="flex items-center space-x-3 min-w-0 flex-1">
+                  <div className="w-2 h-2 bg-emerald-500 rounded-full flex-shrink-0"></div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-gray-900 truncate">{progress.topicName}</p>
                     <p className="text-sm text-gray-600">{progress.category}</p>
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="text-right flex-shrink-0">
                   <div className="text-sm font-medium text-gray-900">{progress.score}%</div>
                   <div className="text-xs text-gray-500">{progress.completedAt.toLocaleDateString()}</div>
                 </div>
@@ -188,19 +188,19 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
   );
 
   const renderAchievementsTab = () => (
-    <div className="space-y-6">
+    <div className="space-responsive">
       {/* Earned Achievements */}
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
           Earned Achievements ({earnedAchievements.length})
         </h3>
         {earnedAchievements.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {earnedAchievements.map((achievement) => (
               <div key={achievement.id} className="p-4 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg">
                 <div className="flex items-start space-x-3">
-                  <div className="text-3xl">{achievement.icon}</div>
-                  <div className="flex-1">
+                  <div className="text-2xl sm:text-3xl flex-shrink-0">{achievement.icon}</div>
+                  <div className="flex-1 min-w-0">
                     <h4 className="font-semibold text-gray-900">{achievement.name}</h4>
                     <p className="text-sm text-gray-600 mb-2">{achievement.description}</p>
                     {achievement.earnedDate && (
@@ -209,7 +209,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
                       </p>
                     )}
                   </div>
-                  <Trophy className="w-5 h-5 text-yellow-600" />
+                  <Trophy className="w-5 h-5 text-yellow-600 flex-shrink-0" />
                 </div>
               </div>
             ))}
@@ -228,16 +228,16 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
           Upcoming Achievements ({upcomingAchievements.length})
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {upcomingAchievements.map((achievement) => (
             <div key={achievement.id} className="p-4 bg-gray-50 border border-gray-200 rounded-lg opacity-60">
               <div className="flex items-start space-x-3">
-                <div className="text-3xl grayscale">{achievement.icon}</div>
-                <div className="flex-1">
+                <div className="text-2xl sm:text-3xl grayscale flex-shrink-0">{achievement.icon}</div>
+                <div className="flex-1 min-w-0">
                   <h4 className="font-semibold text-gray-900">{achievement.name}</h4>
                   <p className="text-sm text-gray-600">{achievement.description}</p>
                 </div>
-                <div className="w-5 h-5 border-2 border-gray-300 rounded-full"></div>
+                <div className="w-5 h-5 border-2 border-gray-300 rounded-full flex-shrink-0"></div>
               </div>
             </div>
           ))}
@@ -247,23 +247,23 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
   );
 
   const renderStatisticsTab = () => (
-    <div className="space-y-6">
+    <div className="space-responsive">
       {/* Overall Stats */}
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Overall Statistics</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl border border-blue-100">
-            <div className="text-3xl font-bold text-blue-600 mb-2">{totalTopics}</div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+          <div className="text-center p-4 sm:p-6 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl border border-blue-100">
+            <div className="text-2xl sm:text-3xl font-bold text-blue-600 mb-2">{totalTopics}</div>
             <div className="text-sm font-medium text-blue-700">Total Topics</div>
             <div className="text-xs text-blue-600 mt-1">Across all categories</div>
           </div>
-          <div className="text-center p-6 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl border border-emerald-100">
-            <div className="text-3xl font-bold text-emerald-600 mb-2">{Math.round(totalStudyTime / 60)}h</div>
+          <div className="text-center p-4 sm:p-6 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl border border-emerald-100">
+            <div className="text-2xl sm:text-3xl font-bold text-emerald-600 mb-2">{Math.round(totalStudyTime / 60)}h</div>
             <div className="text-sm font-medium text-emerald-700">Total Study Time</div>
             <div className="text-xs text-emerald-600 mt-1">Time invested in learning</div>
           </div>
-          <div className="text-center p-6 bg-gradient-to-br from-orange-50 to-red-50 rounded-xl border border-orange-100">
-            <div className="text-3xl font-bold text-orange-600 mb-2">{Math.round(averageScore)}%</div>
+          <div className="text-center p-4 sm:p-6 bg-gradient-to-br from-orange-50 to-red-50 rounded-xl border border-orange-100">
+            <div className="text-2xl sm:text-3xl font-bold text-orange-600 mb-2">{Math.round(averageScore)}%</div>
             <div className="text-sm font-medium text-orange-700">Average Score</div>
             <div className="text-xs text-orange-600 mt-1">Overall performance</div>
           </div>
@@ -315,7 +315,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
   );
 
   const renderGoalsTab = () => (
-    <div className="space-y-6">
+    <div className="space-responsive">
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Learning Goals</h3>
         {userProfile?.learningGoals && userProfile.learningGoals.length > 0 ? (
@@ -323,11 +323,11 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
             {userProfile.learningGoals.map((goal, index) => (
               <div key={index} className="p-4 bg-gray-50 rounded-lg">
                 <div className="flex items-start space-x-3">
-                  <div className="w-6 h-6 bg-indigo-100 rounded-full flex items-center justify-center mt-1">
+                  <div className="w-6 h-6 bg-indigo-100 rounded-full flex items-center justify-center mt-1 flex-shrink-0">
                     <Target className="w-4 h-4 text-indigo-600" />
                   </div>
-                  <div className="flex-1">
-                    <h4 className="font-medium text-gray-900">{goal}</h4>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-gray-900 break-words">{goal}</h4>
                     <div className="mt-2">
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div 
@@ -365,8 +365,8 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
           ].map((suggestion, index) => (
             <div key={index} className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <div className="flex items-center justify-between">
-                <span className="text-blue-800">{suggestion}</span>
-                <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                <span className="text-blue-800 text-sm break-words flex-1">{suggestion}</span>
+                <button className="text-blue-600 hover:text-blue-800 text-sm font-medium ml-3 flex-shrink-0 touch-target">
                   Add Goal
                 </button>
               </div>
@@ -388,44 +388,59 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-        <div className="flex h-full">
+    <div className="modal-responsive">
+      <div className="modal-content-large">
+        <div className="flex flex-col lg:flex-row h-full max-h-[95vh]">
           {/* Sidebar */}
-          <div className="w-64 bg-gray-50 border-r border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-gray-900">Profile</h2>
+          <div className="w-full lg:w-64 bg-gray-50 border-b lg:border-b-0 lg:border-r border-gray-200 p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Profile</h2>
               <button
                 onClick={onClose}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors touch-target"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
             
-            <nav className="space-y-2">
-              {tabs.map((tab) => {
-                const Icon = tab.icon;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`w-full flex items-center px-3 py-2 text-left rounded-lg transition-colors ${
-                      activeTab === tab.id
-                        ? 'bg-indigo-100 text-indigo-700'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    <Icon className="w-5 h-5 mr-3" />
-                    {tab.label}
-                  </button>
-                );
-              })}
+            <nav className="space-y-1 sm:space-y-2">
+              <div className="lg:hidden">
+                <select
+                  value={activeTab}
+                  onChange={(e) => setActiveTab(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                >
+                  {tabs.map((tab) => (
+                    <option key={tab.id} value={tab.id}>
+                      {tab.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="hidden lg:block">
+                {tabs.map((tab) => {
+                  const Icon = tab.icon;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`w-full flex items-center px-3 py-2 text-left rounded-lg transition-colors touch-target ${
+                        activeTab === tab.id
+                          ? 'bg-indigo-100 text-indigo-700'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      <Icon className="w-5 h-5 mr-3" />
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
             </nav>
           </div>
 
           {/* Content */}
-          <div className="flex-1 p-6 overflow-y-auto">
+          <div className="flex-1 p-4 sm:p-6 overflow-y-auto">
             {renderTabContent()}
           </div>
         </div>

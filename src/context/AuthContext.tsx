@@ -23,7 +23,8 @@ import {
   deleteLearningGoal,
   subscribeToLearningGoals,
   getTopicsWithProgress,
-  addProgress
+  addProgress,
+  initializeSampleData
 } from '../services/firestore';
 import { onSnapshot, doc } from 'firebase/firestore';
 import { db } from '../firebase/config';
@@ -111,6 +112,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       
       await updateUserPreferences(userCredential.user.uid, defaultPreferences);
+      
+      // Initialize sample data for new users
+      await initializeSampleData(userCredential.user.uid);
+      
     } catch (error) {
       console.error('Signup error:', error);
       throw error;
@@ -289,6 +294,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           } as User;
           setUserProfile(profile);
         }
+      }, (error) => {
+        console.error('AuthContext: Profile subscription error:', error);
       });
 
       // Store unsubscribe functions for cleanup
@@ -312,12 +319,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCurrentUser(user);
         
         if (user) {
-          console.log('User authenticated:', user.uid);
+          console.log('AuthContext: User authenticated:', user.uid);
           // Update last login time
           await updateUserProfile(user.uid, { lastLoginAt: new Date() });
           
           // Load user data and set up listeners
-          console.log('Loading user data for:', user.uid);
+          console.log('AuthContext: Loading user data for:', user.uid);
           unsubscribeData = await loadUserData(user);
         } else {
           console.log('AuthContext: User logged out, clearing data');

@@ -106,12 +106,13 @@ export const subscribeToLearningGoals = (uid: string, callback: (goals: Learning
   });
 };
 
-// Topics Operations
-export const getAvailableTopics = async (): Promise<Topic[]> => {
-  console.log('Firestore: getAvailableTopics called');
+// Topics Operations - Fixed and Enhanced
+export const getAvailableTopics = (): Topic[] => {
+  console.log('Firestore: getAvailableTopics called - returning curated topics');
   
-  // Curated list of topics with consistent IDs
+  // Comprehensive curated list of topics with consistent IDs
   const topics: Topic[] = [
+    // JavaScript Topics
     {
       id: 'javascript-fundamentals',
       name: 'JavaScript Fundamentals',
@@ -123,24 +124,14 @@ export const getAvailableTopics = async (): Promise<Topic[]> => {
       skills: ['Variables', 'Functions', 'Objects', 'Arrays', 'Control Flow']
     },
     {
-      id: 'react-fundamentals',
-      name: 'React Fundamentals',
-      description: 'Learn the basics of React including components, JSX, and props',
-      category: 'React',
-      difficulty: 'beginner',
-      estimatedTime: 120,
+      id: 'javascript-es6',
+      name: 'JavaScript ES6+ Features',
+      description: 'Modern JavaScript features including arrow functions, destructuring, and modules',
+      category: 'JavaScript',
+      difficulty: 'intermediate',
+      estimatedTime: 95,
       prerequisites: ['JavaScript Fundamentals'],
-      skills: ['Components', 'JSX', 'Props', 'State']
-    },
-    {
-      id: 'css-fundamentals',
-      name: 'CSS Fundamentals',
-      description: 'Learn CSS basics including selectors, properties, and the box model',
-      category: 'CSS',
-      difficulty: 'beginner',
-      estimatedTime: 90,
-      prerequisites: [],
-      skills: ['Selectors', 'Box Model', 'Typography', 'Colors']
+      skills: ['Arrow Functions', 'Destructuring', 'Modules', 'Template Literals', 'Spread Operator']
     },
     {
       id: 'javascript-async',
@@ -153,6 +144,38 @@ export const getAvailableTopics = async (): Promise<Topic[]> => {
       skills: ['Promises', 'Async/Await', 'Fetch API', 'Error Handling']
     },
     {
+      id: 'javascript-dom',
+      name: 'DOM Manipulation',
+      description: 'Learn to interact with and manipulate the Document Object Model',
+      category: 'JavaScript',
+      difficulty: 'intermediate',
+      estimatedTime: 85,
+      prerequisites: ['JavaScript Fundamentals'],
+      skills: ['DOM Selection', 'Event Handling', 'Element Manipulation', 'Dynamic Content']
+    },
+    {
+      id: 'web-apis',
+      name: 'Web APIs & Fetch',
+      description: 'Learn to work with REST APIs, fetch data, and handle responses',
+      category: 'JavaScript',
+      difficulty: 'intermediate',
+      estimatedTime: 80,
+      prerequisites: ['JavaScript Fundamentals', 'Async JavaScript'],
+      skills: ['Fetch API', 'REST APIs', 'JSON', 'Error Handling', 'HTTP Methods']
+    },
+
+    // React Topics
+    {
+      id: 'react-fundamentals',
+      name: 'React Fundamentals',
+      description: 'Learn the basics of React including components, JSX, and props',
+      category: 'React',
+      difficulty: 'beginner',
+      estimatedTime: 120,
+      prerequisites: ['JavaScript Fundamentals'],
+      skills: ['Components', 'JSX', 'Props', 'State']
+    },
+    {
       id: 'react-hooks',
       name: 'React Hooks',
       description: 'Master React hooks including useState, useEffect, and custom hooks',
@@ -161,6 +184,38 @@ export const getAvailableTopics = async (): Promise<Topic[]> => {
       estimatedTime: 90,
       prerequisites: ['React Fundamentals'],
       skills: ['useState', 'useEffect', 'Custom Hooks', 'Hook Rules']
+    },
+    {
+      id: 'react-state-management',
+      name: 'React State Management',
+      description: 'Advanced state management patterns in React applications',
+      category: 'React',
+      difficulty: 'advanced',
+      estimatedTime: 120,
+      prerequisites: ['React Fundamentals', 'React Hooks'],
+      skills: ['Context API', 'useReducer', 'State Patterns', 'Performance']
+    },
+    {
+      id: 'react-router',
+      name: 'React Router',
+      description: 'Learn client-side routing in React applications',
+      category: 'React',
+      difficulty: 'intermediate',
+      estimatedTime: 75,
+      prerequisites: ['React Fundamentals'],
+      skills: ['Routing', 'Navigation', 'Route Parameters', 'Protected Routes']
+    },
+
+    // CSS Topics
+    {
+      id: 'css-fundamentals',
+      name: 'CSS Fundamentals',
+      description: 'Learn CSS basics including selectors, properties, and the box model',
+      category: 'CSS',
+      difficulty: 'beginner',
+      estimatedTime: 90,
+      prerequisites: [],
+      skills: ['Selectors', 'Box Model', 'Typography', 'Colors']
     },
     {
       id: 'css-flexbox',
@@ -183,6 +238,18 @@ export const getAvailableTopics = async (): Promise<Topic[]> => {
       skills: ['Grid Container', 'Grid Items', 'Grid Areas', 'Responsive Grids']
     },
     {
+      id: 'css-animations',
+      name: 'CSS Animations & Transitions',
+      description: 'Create smooth animations and transitions with CSS',
+      category: 'CSS',
+      difficulty: 'intermediate',
+      estimatedTime: 70,
+      prerequisites: ['CSS Fundamentals'],
+      skills: ['Transitions', 'Keyframes', 'Transform', 'Animation Properties']
+    },
+
+    // TypeScript Topics
+    {
       id: 'typescript-basics',
       name: 'TypeScript Basics',
       description: 'Add static typing to JavaScript with TypeScript',
@@ -192,6 +259,18 @@ export const getAvailableTopics = async (): Promise<Topic[]> => {
       prerequisites: ['JavaScript Fundamentals'],
       skills: ['Type Annotations', 'Interfaces', 'Types', 'Generics']
     },
+    {
+      id: 'typescript-advanced',
+      name: 'Advanced TypeScript',
+      description: 'Master advanced TypeScript features and patterns',
+      category: 'TypeScript',
+      difficulty: 'advanced',
+      estimatedTime: 130,
+      prerequisites: ['TypeScript Basics'],
+      skills: ['Advanced Types', 'Decorators', 'Modules', 'Type Guards']
+    },
+
+    // Backend Topics
     {
       id: 'node-express',
       name: 'Node.js & Express',
@@ -203,38 +282,52 @@ export const getAvailableTopics = async (): Promise<Topic[]> => {
       skills: ['Node.js', 'Express', 'Routing', 'Middleware', 'APIs']
     },
     {
-      id: 'react-state-management',
-      name: 'React State Management',
-      description: 'Advanced state management patterns in React applications',
-      category: 'React',
-      difficulty: 'advanced',
+      id: 'database-basics',
+      name: 'Database Fundamentals',
+      description: 'Learn database concepts and SQL basics',
+      category: 'Backend',
+      difficulty: 'intermediate',
       estimatedTime: 120,
-      prerequisites: ['React Fundamentals', 'React Hooks'],
-      skills: ['Context API', 'useReducer', 'State Patterns', 'Performance']
+      prerequisites: ['Node.js & Express'],
+      skills: ['SQL', 'Database Design', 'Queries', 'Relationships']
     },
+
+    // Testing Topics
     {
-      id: 'javascript-es6',
-      name: 'JavaScript ES6+ Features',
-      description: 'Modern JavaScript features including arrow functions, destructuring, and modules',
-      category: 'JavaScript',
+      id: 'testing-fundamentals',
+      name: 'Testing Fundamentals',
+      description: 'Learn testing concepts and write unit tests',
+      category: 'Testing',
       difficulty: 'intermediate',
-      estimatedTime: 95,
+      estimatedTime: 100,
       prerequisites: ['JavaScript Fundamentals'],
-      skills: ['Arrow Functions', 'Destructuring', 'Modules', 'Template Literals', 'Spread Operator']
+      skills: ['Unit Testing', 'Test-Driven Development', 'Mocking', 'Assertions']
+    },
+
+    // Tools & Workflow
+    {
+      id: 'git-version-control',
+      name: 'Git & Version Control',
+      description: 'Master Git for version control and collaboration',
+      category: 'Tools',
+      difficulty: 'beginner',
+      estimatedTime: 90,
+      prerequisites: [],
+      skills: ['Git Commands', 'Branching', 'Merging', 'Collaboration']
     },
     {
-      id: 'web-apis',
-      name: 'Web APIs & Fetch',
-      description: 'Learn to work with REST APIs, fetch data, and handle responses',
-      category: 'JavaScript',
-      difficulty: 'intermediate',
-      estimatedTime: 80,
-      prerequisites: ['JavaScript Fundamentals', 'Async JavaScript'],
-      skills: ['Fetch API', 'REST APIs', 'JSON', 'Error Handling', 'HTTP Methods']
+      id: 'webpack-bundling',
+      name: 'Webpack & Build Tools',
+      description: 'Learn module bundling and build optimization',
+      category: 'Tools',
+      difficulty: 'advanced',
+      estimatedTime: 110,
+      prerequisites: ['JavaScript ES6+ Features'],
+      skills: ['Module Bundling', 'Optimization', 'Loaders', 'Plugins']
     }
   ];
 
-  console.log('Firestore: Returning', topics.length, 'base topics');
+  console.log('Firestore: Returning', topics.length, 'curated topics');
   return topics;
 };
 
@@ -243,7 +336,7 @@ export const getTopicsWithProgress = async (uid: string): Promise<Topic[]> => {
     console.log('Firestore: getTopicsWithProgress called for user:', uid);
     
     // Get all available topics first
-    const baseTopics = await getAvailableTopics();
+    const baseTopics = getAvailableTopics();
     console.log('Firestore: Got', baseTopics.length, 'base topics');
     
     // Get user's progress
@@ -281,7 +374,7 @@ export const getTopicsWithProgress = async (uid: string): Promise<Topic[]> => {
   } catch (error) {
     console.error('Firestore: Error in getTopicsWithProgress:', error);
     // Return base topics without progress on error
-    const baseTopics = await getAvailableTopics();
+    const baseTopics = getAvailableTopics();
     return baseTopics.map(topic => ({ ...topic, isCompleted: false }));
   }
 };
@@ -302,16 +395,22 @@ export const updateUserPreferences = async (uid: string, preferences: UserPrefer
   await setDoc(preferencesRef, preferences, { merge: true });
 };
 
-// Progress Operations
+// Progress Operations - Enhanced
 export const addProgress = async (uid: string, progressData: Omit<Progress, 'completedAt'>) => {
   console.log('Firestore: Adding progress for user', uid, 'topic', progressData.topicId, progressData.topicName);
-  const progressRef = collection(db, 'users', uid, 'progress');
-  const docRef = await addDoc(progressRef, {
-    ...progressData,
-    completedAt: Timestamp.now()
-  });
-  console.log('Firestore: Successfully added progress with ID', docRef.id);
-  return docRef.id;
+  
+  try {
+    const progressRef = collection(db, 'users', uid, 'progress');
+    const docRef = await addDoc(progressRef, {
+      ...progressData,
+      completedAt: Timestamp.now()
+    });
+    console.log('Firestore: Successfully added progress with ID', docRef.id);
+    return docRef.id;
+  } catch (error) {
+    console.error('Firestore: Error adding progress:', error);
+    throw error;
+  }
 };
 
 export const getUserProgress = async (uid: string): Promise<Progress[]> => {
@@ -354,34 +453,61 @@ export const subscribeToProgress = (uid: string, callback: (progress: Progress[]
     
     console.log('Firestore: Progress subscription update - now have', progress.length, 'entries');
     callback(progress);
+  }, (error) => {
+    console.error('Firestore: Progress subscription error:', error);
+    // Call callback with empty array on error to prevent app crash
+    callback([]);
   });
 };
 
 // Weekly Plan Operations
 export const getWeeklyPlan = async (uid: string): Promise<WeeklyPlanItem[]> => {
-  const weeklyPlanRef = collection(db, 'users', uid, 'weekly_plan');
-  const querySnapshot = await getDocs(weeklyPlanRef);
-  
-  return querySnapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  })) as WeeklyPlanItem[];
+  try {
+    const weeklyPlanRef = collection(db, 'users', uid, 'weekly_plan');
+    const querySnapshot = await getDocs(weeklyPlanRef);
+    
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as WeeklyPlanItem[];
+  } catch (error) {
+    console.error('Firestore: Error loading weekly plan:', error);
+    return [];
+  }
 };
 
 export const addWeeklyPlanItem = async (uid: string, planItem: Omit<WeeklyPlanItem, 'id'>) => {
-  const weeklyPlanRef = collection(db, 'users', uid, 'weekly_plan');
-  const docRef = await addDoc(weeklyPlanRef, planItem);
-  return docRef.id;
+  try {
+    const weeklyPlanRef = collection(db, 'users', uid, 'weekly_plan');
+    const docRef = await addDoc(weeklyPlanRef, planItem);
+    console.log('Firestore: Added weekly plan item with ID:', docRef.id);
+    return docRef.id;
+  } catch (error) {
+    console.error('Firestore: Error adding weekly plan item:', error);
+    throw error;
+  }
 };
 
 export const updateWeeklyPlanItem = async (uid: string, itemId: string, updates: Partial<WeeklyPlanItem>) => {
-  const itemRef = doc(db, 'users', uid, 'weekly_plan', itemId);
-  await updateDoc(itemRef, updates);
+  try {
+    const itemRef = doc(db, 'users', uid, 'weekly_plan', itemId);
+    await updateDoc(itemRef, updates);
+    console.log('Firestore: Updated weekly plan item:', itemId);
+  } catch (error) {
+    console.error('Firestore: Error updating weekly plan item:', error);
+    throw error;
+  }
 };
 
 export const deleteWeeklyPlanItem = async (uid: string, itemId: string) => {
-  const itemRef = doc(db, 'users', uid, 'weekly_plan', itemId);
-  await deleteDoc(itemRef);
+  try {
+    const itemRef = doc(db, 'users', uid, 'weekly_plan', itemId);
+    await deleteDoc(itemRef);
+    console.log('Firestore: Deleted weekly plan item:', itemId);
+  } catch (error) {
+    console.error('Firestore: Error deleting weekly plan item:', error);
+    throw error;
+  }
 };
 
 export const subscribeToWeeklyPlan = (uid: string, callback: (plan: WeeklyPlanItem[]) => void) => {
@@ -393,32 +519,45 @@ export const subscribeToWeeklyPlan = (uid: string, callback: (plan: WeeklyPlanIt
       ...doc.data()
     })) as WeeklyPlanItem[];
     callback(plan);
+  }, (error) => {
+    console.error('Firestore: Weekly plan subscription error:', error);
+    callback([]);
   });
 };
 
 // Analytics and Insights
 export const getWeeklyStats = async (uid: string) => {
-  const progressRef = collection(db, 'users', uid, 'progress');
-  const weekAgo = new Date();
-  weekAgo.setDate(weekAgo.getDate() - 7);
-  
-  const q = query(
-    progressRef, 
-    where('completedAt', '>=', Timestamp.fromDate(weekAgo)),
-    orderBy('completedAt', 'desc')
-  );
-  
-  const querySnapshot = await getDocs(q);
-  const weeklyProgress = querySnapshot.docs.map(doc => doc.data()) as Progress[];
-  
-  return {
-    topicsCompleted: weeklyProgress.length,
-    totalTimeSpent: weeklyProgress.reduce((acc, item) => acc + item.timeSpent, 0),
-    averageScore: weeklyProgress.length > 0 
-      ? weeklyProgress.reduce((acc, item) => acc + item.score, 0) / weeklyProgress.length 
-      : 0,
-    streakDays: calculateStreakDays(weeklyProgress)
-  };
+  try {
+    const progressRef = collection(db, 'users', uid, 'progress');
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    
+    const q = query(
+      progressRef, 
+      where('completedAt', '>=', Timestamp.fromDate(weekAgo)),
+      orderBy('completedAt', 'desc')
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const weeklyProgress = querySnapshot.docs.map(doc => doc.data()) as Progress[];
+    
+    return {
+      topicsCompleted: weeklyProgress.length,
+      totalTimeSpent: weeklyProgress.reduce((acc, item) => acc + item.timeSpent, 0),
+      averageScore: weeklyProgress.length > 0 
+        ? weeklyProgress.reduce((acc, item) => acc + item.score, 0) / weeklyProgress.length 
+        : 0,
+      streakDays: calculateStreakDays(weeklyProgress)
+    };
+  } catch (error) {
+    console.error('Firestore: Error getting weekly stats:', error);
+    return {
+      topicsCompleted: 0,
+      totalTimeSpent: 0,
+      averageScore: 0,
+      streakDays: 0
+    };
+  }
 };
 
 const calculateStreakDays = (progress: Progress[]): number => {
@@ -442,4 +581,43 @@ const calculateStreakDays = (progress: Progress[]): number => {
   }
   
   return streak;
+};
+
+// Initialize sample data for new users
+export const initializeSampleData = async (uid: string) => {
+  try {
+    console.log('Firestore: Initializing sample data for user:', uid);
+    
+    // Add some sample progress to demonstrate the system
+    const sampleProgress = [
+      {
+        topicId: 'javascript-fundamentals',
+        topicName: 'JavaScript Fundamentals',
+        score: 85,
+        timeSpent: 120,
+        difficulty: 'beginner' as const,
+        category: 'JavaScript'
+      },
+      {
+        topicId: 'css-fundamentals',
+        topicName: 'CSS Fundamentals',
+        score: 92,
+        timeSpent: 90,
+        difficulty: 'beginner' as const,
+        category: 'CSS'
+      }
+    ];
+
+    // Add sample progress (only if user has no existing progress)
+    const existingProgress = await getUserProgress(uid);
+    if (existingProgress.length === 0) {
+      for (const progress of sampleProgress) {
+        await addProgress(uid, progress);
+      }
+      console.log('Firestore: Added sample progress data');
+    }
+
+  } catch (error) {
+    console.error('Firestore: Error initializing sample data:', error);
+  }
 };

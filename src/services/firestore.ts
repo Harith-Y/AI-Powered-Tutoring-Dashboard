@@ -108,6 +108,8 @@ export const subscribeToLearningGoals = (uid: string, callback: (goals: Learning
 
 // Topics Operations
 export const getAvailableTopics = async (): Promise<Topic[]> => {
+  console.log('Firestore: getAvailableTopics called');
+  
   // Curated list of topics with consistent IDs
   const topics: Topic[] = [
     {
@@ -232,55 +234,55 @@ export const getAvailableTopics = async (): Promise<Topic[]> => {
     }
   ];
 
-  console.log('getAvailableTopics: Returning', topics.length, 'topics');
+  console.log('Firestore: Returning', topics.length, 'base topics');
   return topics;
 };
 
 export const getTopicsWithProgress = async (uid: string): Promise<Topic[]> => {
   try {
-    console.log('getTopicsWithProgress: Loading topics for user', uid);
+    console.log('Firestore: getTopicsWithProgress called for user:', uid);
     
-    // Get all available topics
-    const topics = await getAvailableTopics();
-    console.log('getTopicsWithProgress: Got', topics.length, 'base topics');
+    // Get all available topics first
+    const baseTopics = await getAvailableTopics();
+    console.log('Firestore: Got', baseTopics.length, 'base topics');
     
     // Get user's progress
-    const progress = await getUserProgress(uid);
-    console.log('getTopicsWithProgress: Got', progress.length, 'progress entries');
+    const userProgressData = await getUserProgress(uid);
+    console.log('Firestore: Got', userProgressData.length, 'progress entries');
+    
+    // Create a map of completed topic IDs for faster lookup
+    const completedTopicIds = new Set(userProgressData.map(p => p.topicId));
+    console.log('Firestore: Completed topic IDs:', Array.from(completedTopicIds));
     
     // Map topics with completion status
-    const topicsWithProgress = topics.map(topic => {
-      // Check if this topic has been completed by matching topicId
-      const topicProgress = progress.find(p => {
-        const match = p.topicId === topic.id;
-        if (match) {
-          console.log('getTopicsWithProgress: Found match for', topic.id, 'with progress', p.topicId);
-        }
-        return match;
-      });
+    const topicsWithProgress = baseTopics.map(topic => {
+      const isCompleted = completedTopicIds.has(topic.id);
+      const progressEntry = userProgressData.find(p => p.topicId === topic.id);
       
       const result = {
         ...topic,
-        isCompleted: !!topicProgress,
-        completedAt: topicProgress?.completedAt,
-        score: topicProgress?.score
+        isCompleted,
+        completedAt: progressEntry?.completedAt,
+        score: progressEntry?.score
       };
       
-      if (topicProgress) {
-        console.log('getTopicsWithProgress: Topic', topic.name, 'is completed with score', topicProgress.score);
+      if (isCompleted) {
+        console.log('Firestore: Topic', topic.name, 'is completed with score', progressEntry?.score);
       }
       
       return result;
     });
     
-    console.log('getTopicsWithProgress: Returning', topicsWithProgress.length, 'topics with progress');
-    console.log('getTopicsWithProgress: Completed topics:', topicsWithProgress.filter(t => t.isCompleted).length);
+    console.log('Firestore: Returning', topicsWithProgress.length, 'topics with progress');
+    console.log('Firestore: Completed topics count:', topicsWithProgress.filter(t => t.isCompleted).length);
+    console.log('Firestore: Available topics count:', topicsWithProgress.filter(t => !t.isCompleted).length);
     
     return topicsWithProgress;
   } catch (error) {
-    console.error('getTopicsWithProgress: Error loading topics with progress:', error);
+    console.error('Firestore: Error in getTopicsWithProgress:', error);
     // Return base topics without progress on error
-    return await getAvailableTopics();
+    const baseTopics = await getAvailableTopics();
+    return baseTopics.map(topic => ({ ...topic, isCompleted: false }));
   }
 };
 
@@ -302,19 +304,19 @@ export const updateUserPreferences = async (uid: string, preferences: UserPrefer
 
 // Progress Operations
 export const addProgress = async (uid: string, progressData: Omit<Progress, 'completedAt'>) => {
-  console.log('addProgress: Adding progress for user', uid, 'topic', progressData.topicId, progressData.topicName);
+  console.log('Firestore: Adding progress for user', uid, 'topic', progressData.topicId, progressData.topicName);
   const progressRef = collection(db, 'users', uid, 'progress');
   const docRef = await addDoc(progressRef, {
     ...progressData,
     completedAt: Timestamp.now()
   });
-  console.log('addProgress: Successfully added progress with ID', docRef.id);
+  console.log('Firestore: Successfully added progress with ID', docRef.id);
   return docRef.id;
 };
 
 export const getUserProgress = async (uid: string): Promise<Progress[]> => {
   try {
-    console.log('getUserProgress: Loading progress for user', uid);
+    console.log('Firestore: Loading progress for user', uid);
     const progressRef = collection(db, 'users', uid, 'progress');
     const q = query(progressRef, orderBy('completedAt', 'desc'));
     const querySnapshot = await getDocs(q);
@@ -327,19 +329,20 @@ export const getUserProgress = async (uid: string): Promise<Progress[]> => {
       };
     }) as Progress[];
     
-    console.log('getUserProgress: Loaded', progress.length, 'progress entries');
+    console.log('Firestore: Loaded', progress.length, 'progress entries');
     progress.forEach(p => {
-      console.log('getUserProgress: Progress entry -', p.topicId, p.topicName, 'score:', p.score);
+      console.log('Firestore: Progress entry -', p.topicId, p.topicName, 'score:', p.score);
     });
     
     return progress;
   } catch (error) {
-    console.error('getUserProgress: Error loading progress:', error);
+    console.error('Firestore: Error loading progress:', error);
     return [];
   }
 };
 
 export const subscribeToProgress = (uid: string, callback: (progress: Progress[]) => void) => {
+  console.log('Firestore: Setting up progress subscription for user', uid);
   const progressRef = collection(db, 'users', uid, 'progress');
   const q = query(progressRef, orderBy('completedAt', 'desc'));
   
@@ -349,7 +352,7 @@ export const subscribeToProgress = (uid: string, callback: (progress: Progress[]
       completedAt: doc.data().completedAt?.toDate() || new Date()
     })) as Progress[];
     
-    console.log('subscribeToProgress: Progress updated, now have', progress.length, 'entries');
+    console.log('Firestore: Progress subscription update - now have', progress.length, 'entries');
     callback(progress);
   });
 };

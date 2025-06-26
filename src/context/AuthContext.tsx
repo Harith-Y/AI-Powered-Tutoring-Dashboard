@@ -225,18 +225,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refreshTopics = async () => {
     if (!currentUser) return;
     try {
-      console.log('Refreshing topics for user:', currentUser.uid);
+      console.log('AuthContext: Refreshing topics for user:', currentUser.uid);
       const topics = await getTopicsWithProgress(currentUser.uid);
-      console.log('Loaded topics:', topics.length, topics);
+      console.log('AuthContext: Setting available topics:', topics.length, 'topics');
+      console.log('AuthContext: Topics data:', topics);
       setAvailableTopics(topics);
     } catch (error) {
-      console.error('Error refreshing topics:', error);
+      console.error('AuthContext: Error refreshing topics:', error);
     }
   };
 
   const loadUserData = async (user: FirebaseUser) => {
     try {
-      console.log('Loading user data for:', user.uid);
+      console.log('AuthContext: Loading user data for:', user.uid);
       
       // Load user preferences
       const preferences = await getUserPreferences(user.uid);
@@ -248,16 +249,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const stats = await getWeeklyStats(user.uid);
       setWeeklyStats(stats);
 
-      // Load topics with progress - this is the key fix
-      console.log('Loading topics with progress...');
+      // Load topics with progress - this is critical
+      console.log('AuthContext: Loading topics with progress...');
       await refreshTopics();
 
       // Set up real-time listeners
       const unsubscribeProgress = subscribeToProgress(user.uid, (progress) => {
-        console.log('Progress updated:', progress.length, 'items');
+        console.log('AuthContext: Progress updated:', progress.length, 'items');
         setUserProgress(progress);
         // Refresh topics when progress changes to update completion status
-        refreshTopics();
+        setTimeout(() => refreshTopics(), 100); // Small delay to ensure progress is saved
       });
 
       const unsubscribeWeeklyPlan = subscribeToWeeklyPlan(user.uid, (plan) => {
@@ -291,7 +292,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         unsubscribeProfile();
       };
     } catch (error) {
-      console.error('Error loading user data:', error);
+      console.error('AuthContext: Error loading user data:', error);
       return undefined;
     }
   };
@@ -304,14 +305,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCurrentUser(user);
         
         if (user) {
-          console.log('User authenticated:', user.uid);
+          console.log('AuthContext: User authenticated:', user.uid);
           // Update last login time
           await updateUserProfile(user.uid, { lastLoginAt: new Date() });
           
           // Load user data and set up listeners
           unsubscribeData = await loadUserData(user);
         } else {
-          console.log('User logged out, clearing data');
+          console.log('AuthContext: User logged out, clearing data');
           // Clean up data when user logs out
           setUserProfile(null);
           setUserPreferences(null);
@@ -327,7 +328,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
       } catch (error) {
-        console.error('Auth state change error:', error);
+        console.error('AuthContext: Auth state change error:', error);
       } finally {
         setLoading(false);
       }
@@ -340,6 +341,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
   }, []);
+
+  // Debug effect to log topics state changes
+  useEffect(() => {
+    console.log('AuthContext: availableTopics state changed:', availableTopics.length, 'topics');
+    if (availableTopics.length > 0) {
+      console.log('AuthContext: First few topics:', availableTopics.slice(0, 3).map(t => ({ id: t.id, name: t.name, isCompleted: t.isCompleted })));
+    }
+  }, [availableTopics]);
 
   const value = {
     currentUser,

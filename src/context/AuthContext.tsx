@@ -46,6 +46,7 @@ interface AuthContextType {
   deleteGoal: (goalId: string) => Promise<void>;
   completeGoal: (goalId: string) => Promise<void>;
   completeTopic: (topicId: string, score: number, timeSpent: number) => Promise<void>;
+  refreshTopics: () => Promise<void>;
   loading: boolean;
 }
 
@@ -213,26 +214,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         category: topic.category
       });
 
-      // Update topics with new completion status
-      await loadTopics();
+      // Refresh topics to update completion status
+      await refreshTopics();
     } catch (error) {
       console.error('Complete topic error:', error);
       throw error;
     }
   };
 
-  const loadTopics = async () => {
+  const refreshTopics = async () => {
     if (!currentUser) return;
     try {
+      console.log('Refreshing topics for user:', currentUser.uid);
       const topics = await getTopicsWithProgress(currentUser.uid);
+      console.log('Loaded topics:', topics.length, topics);
       setAvailableTopics(topics);
     } catch (error) {
-      console.error('Error loading topics:', error);
+      console.error('Error refreshing topics:', error);
     }
   };
 
   const loadUserData = async (user: FirebaseUser) => {
     try {
+      console.log('Loading user data for:', user.uid);
+      
       // Load user preferences
       const preferences = await getUserPreferences(user.uid);
       if (preferences) {
@@ -243,14 +248,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const stats = await getWeeklyStats(user.uid);
       setWeeklyStats(stats);
 
-      // Load topics with progress
-      await loadTopics();
+      // Load topics with progress - this is the key fix
+      console.log('Loading topics with progress...');
+      await refreshTopics();
 
       // Set up real-time listeners
       const unsubscribeProgress = subscribeToProgress(user.uid, (progress) => {
+        console.log('Progress updated:', progress.length, 'items');
         setUserProgress(progress);
-        // Reload topics when progress changes to update completion status
-        loadTopics();
+        // Refresh topics when progress changes to update completion status
+        refreshTopics();
       });
 
       const unsubscribeWeeklyPlan = subscribeToWeeklyPlan(user.uid, (plan) => {
@@ -297,12 +304,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCurrentUser(user);
         
         if (user) {
+          console.log('User authenticated:', user.uid);
           // Update last login time
           await updateUserProfile(user.uid, { lastLoginAt: new Date() });
           
           // Load user data and set up listeners
           unsubscribeData = await loadUserData(user);
         } else {
+          console.log('User logged out, clearing data');
           // Clean up data when user logs out
           setUserProfile(null);
           setUserPreferences(null);
@@ -350,6 +359,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     deleteGoal,
     completeGoal,
     completeTopic,
+    refreshTopics,
     loading
   };
 

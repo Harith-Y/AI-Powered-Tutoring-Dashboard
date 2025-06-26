@@ -109,7 +109,7 @@ export const subscribeToLearningGoals = (uid: string, callback: (goals: Learning
 // Topics Operations
 export const getAvailableTopics = async (): Promise<Topic[]> => {
   // Curated list of topics with consistent IDs
-  return [
+  const topics: Topic[] = [
     {
       id: 'javascript-fundamentals',
       name: 'JavaScript Fundamentals',
@@ -231,22 +231,57 @@ export const getAvailableTopics = async (): Promise<Topic[]> => {
       skills: ['Fetch API', 'REST APIs', 'JSON', 'Error Handling', 'HTTP Methods']
     }
   ];
+
+  console.log('getAvailableTopics: Returning', topics.length, 'topics');
+  return topics;
 };
 
 export const getTopicsWithProgress = async (uid: string): Promise<Topic[]> => {
-  const topics = await getAvailableTopics();
-  const progress = await getUserProgress(uid);
-  
-  return topics.map(topic => {
-    // Check if this topic has been completed by matching topicId
-    const topicProgress = progress.find(p => p.topicId === topic.id);
-    return {
-      ...topic,
-      isCompleted: !!topicProgress,
-      completedAt: topicProgress?.completedAt,
-      score: topicProgress?.score
-    };
-  });
+  try {
+    console.log('getTopicsWithProgress: Loading topics for user', uid);
+    
+    // Get all available topics
+    const topics = await getAvailableTopics();
+    console.log('getTopicsWithProgress: Got', topics.length, 'base topics');
+    
+    // Get user's progress
+    const progress = await getUserProgress(uid);
+    console.log('getTopicsWithProgress: Got', progress.length, 'progress entries');
+    
+    // Map topics with completion status
+    const topicsWithProgress = topics.map(topic => {
+      // Check if this topic has been completed by matching topicId
+      const topicProgress = progress.find(p => {
+        const match = p.topicId === topic.id;
+        if (match) {
+          console.log('getTopicsWithProgress: Found match for', topic.id, 'with progress', p.topicId);
+        }
+        return match;
+      });
+      
+      const result = {
+        ...topic,
+        isCompleted: !!topicProgress,
+        completedAt: topicProgress?.completedAt,
+        score: topicProgress?.score
+      };
+      
+      if (topicProgress) {
+        console.log('getTopicsWithProgress: Topic', topic.name, 'is completed with score', topicProgress.score);
+      }
+      
+      return result;
+    });
+    
+    console.log('getTopicsWithProgress: Returning', topicsWithProgress.length, 'topics with progress');
+    console.log('getTopicsWithProgress: Completed topics:', topicsWithProgress.filter(t => t.isCompleted).length);
+    
+    return topicsWithProgress;
+  } catch (error) {
+    console.error('getTopicsWithProgress: Error loading topics with progress:', error);
+    // Return base topics without progress on error
+    return await getAvailableTopics();
+  }
 };
 
 // User Preferences Operations
@@ -267,22 +302,41 @@ export const updateUserPreferences = async (uid: string, preferences: UserPrefer
 
 // Progress Operations
 export const addProgress = async (uid: string, progressData: Omit<Progress, 'completedAt'>) => {
+  console.log('addProgress: Adding progress for user', uid, 'topic', progressData.topicId, progressData.topicName);
   const progressRef = collection(db, 'users', uid, 'progress');
-  await addDoc(progressRef, {
+  const docRef = await addDoc(progressRef, {
     ...progressData,
     completedAt: Timestamp.now()
   });
+  console.log('addProgress: Successfully added progress with ID', docRef.id);
+  return docRef.id;
 };
 
 export const getUserProgress = async (uid: string): Promise<Progress[]> => {
-  const progressRef = collection(db, 'users', uid, 'progress');
-  const q = query(progressRef, orderBy('completedAt', 'desc'));
-  const querySnapshot = await getDocs(q);
-  
-  return querySnapshot.docs.map(doc => ({
-    ...doc.data(),
-    completedAt: doc.data().completedAt?.toDate() || new Date()
-  })) as Progress[];
+  try {
+    console.log('getUserProgress: Loading progress for user', uid);
+    const progressRef = collection(db, 'users', uid, 'progress');
+    const q = query(progressRef, orderBy('completedAt', 'desc'));
+    const querySnapshot = await getDocs(q);
+    
+    const progress = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        ...data,
+        completedAt: data.completedAt?.toDate() || new Date()
+      };
+    }) as Progress[];
+    
+    console.log('getUserProgress: Loaded', progress.length, 'progress entries');
+    progress.forEach(p => {
+      console.log('getUserProgress: Progress entry -', p.topicId, p.topicName, 'score:', p.score);
+    });
+    
+    return progress;
+  } catch (error) {
+    console.error('getUserProgress: Error loading progress:', error);
+    return [];
+  }
 };
 
 export const subscribeToProgress = (uid: string, callback: (progress: Progress[]) => void) => {
@@ -294,6 +348,8 @@ export const subscribeToProgress = (uid: string, callback: (progress: Progress[]
       ...doc.data(),
       completedAt: doc.data().completedAt?.toDate() || new Date()
     })) as Progress[];
+    
+    console.log('subscribeToProgress: Progress updated, now have', progress.length, 'entries');
     callback(progress);
   });
 };

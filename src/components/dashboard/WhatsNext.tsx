@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useNavigate } from 'react-router-dom';
-import { Brain, Clock, Star, Plus, CheckCircle, Lightbulb, TrendingUp, Target, AlertCircle, Calendar, ArrowRight, Eye } from 'lucide-react';
+import { Brain, Clock, Star, Plus, CheckCircle, Lightbulb, TrendingUp, Target, AlertCircle, Calendar, ArrowRight, Eye, RefreshCw } from 'lucide-react';
 import { addWeeklyPlanItem } from '../../services/firestore';
 import { mistralService } from '../../services/mistralService';
 
@@ -23,10 +23,11 @@ interface AcceptedRecommendation {
   day: string;
   estimatedTime: number;
   acceptedAt: Date;
+  taskId?: string; // Track the actual task ID from weekly plan
 }
 
 const WhatsNext: React.FC = () => {
-  const { currentUser, userProfile, userProgress = [] } = useAuth();
+  const { currentUser, userProfile, userProgress = [], weeklyPlan } = useAuth();
   const { isDark } = useTheme();
   const navigate = useNavigate();
   const [recommendations, setRecommendations] = useState<TopicRecommendation[]>([]);
@@ -265,14 +266,46 @@ const WhatsNext: React.FC = () => {
     return () => clearTimeout(timer);
   }, [currentUser?.uid, userProfile?.skillLevel, userProgress?.length]);
 
+  // Update accepted recommendations based on weekly plan
+  useEffect(() => {
+    if (weeklyPlan.length > 0) {
+      // Check if any of our recently accepted items are now in the weekly plan
+      const updatedRecentlyAccepted = recentlyAccepted.map(item => {
+        if (!item.taskId) {
+          // Try to find the corresponding task in weekly plan
+          const matchingTask = weeklyPlan.find(task => 
+            task.topic === item.topicName && 
+            task.day === item.day &&
+            task.estimatedTime === item.estimatedTime
+          );
+          
+          if (matchingTask) {
+            return { ...item, taskId: matchingTask.id };
+          }
+        }
+        return item;
+      });
+      
+      if (JSON.stringify(updatedRecentlyAccepted) !== JSON.stringify(recentlyAccepted)) {
+        setRecentlyAccepted(updatedRecentlyAccepted);
+      }
+    }
+  }, [weeklyPlan, recentlyAccepted]);
+
   const handleAcceptRecommendation = async (recommendation: TopicRecommendation) => {
     if (!currentUser) return;
 
     try {
       const nextDay = getNextAvailableDay();
       
-      // Add to weekly plan
-      await addWeeklyPlanItem(currentUser.uid, {
+      console.log('Adding recommendation to weekly plan:', {
+        topic: recommendation.topicName,
+        day: nextDay,
+        estimatedTime: recommendation.estimatedTime
+      });
+      
+      // Add to weekly plan and get the task ID
+      const taskId = await addWeeklyPlanItem(currentUser.uid, {
         day: nextDay,
         topic: recommendation.topicName,
         description: recommendation.reasoning,
@@ -283,6 +316,8 @@ const WhatsNext: React.FC = () => {
         priority: recommendation.confidence > 0.8 ? 'high' : 'medium'
       });
 
+      console.log('Successfully added to weekly plan with ID:', taskId);
+
       // Mark as accepted
       setAcceptedRecommendations(prev => new Set([...prev, recommendation.topicId]));
       
@@ -292,7 +327,8 @@ const WhatsNext: React.FC = () => {
         topicName: recommendation.topicName,
         day: nextDay,
         estimatedTime: recommendation.estimatedTime,
-        acceptedAt: new Date()
+        acceptedAt: new Date(),
+        taskId: taskId // Store the actual task ID
       };
 
       // Add to recently accepted list
@@ -300,10 +336,11 @@ const WhatsNext: React.FC = () => {
       setCurrentAcceptedItem(acceptedItem);
       setShowSuccessModal(true);
       
-      console.log(`Added "${recommendation.topicName}" to weekly plan`);
+      console.log(`Successfully added "${recommendation.topicName}" to weekly plan with task ID: ${taskId}`);
       
     } catch (error) {
       console.error('Error accepting recommendation:', error);
+      setError('Failed to add recommendation to schedule. Please try again.');
     }
   };
 
@@ -342,6 +379,18 @@ const WhatsNext: React.FC = () => {
 
   const formatDayName = (day: string) => {
     return day.charAt(0).toUpperCase() + day.slice(1);
+  };
+
+  const checkTaskInSchedule = (acceptedItem: AcceptedRecommendation) => {
+    // Check if the task exists in the current weekly plan
+    const taskExists = weeklyPlan.some(task => 
+      task.id === acceptedItem.taskId || 
+      (task.topic === acceptedItem.topicName && 
+       task.day === acceptedItem.day &&
+       task.estimatedTime === acceptedItem.estimatedTime)
+    );
+    
+    return taskExists;
   };
 
   // Auto-close success modal after 5 seconds
@@ -389,7 +438,7 @@ const WhatsNext: React.FC = () => {
               : 'text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50'
           }`}
         >
-          <TrendingUp className="w-4 h-4 mr-2" />
+          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
           {loading ? 'Analyzing...' : 'Refresh'}
         </button>
       </div>
@@ -435,32 +484,53 @@ const WhatsNext: React.FC = () => {
           </div>
           
           <div className="space-y-2">
-            {recentlyAccepted.slice(0, 3).map((item) => (
-              <div key={item.id} className={`flex items-center justify-between p-3 rounded-lg transition-colors ${
-                isDark ? 'bg-emerald-900/30' : 'bg-emerald-100'
-              }`}>
-                <div className="flex items-center space-x-3">
-                  <div className={`w-2 h-2 rounded-full bg-emerald-500`}></div>
-                  <div>
-                    <p className={`font-medium text-sm transition-colors ${
-                      isDark ? 'text-emerald-200' : 'text-emerald-800'
-                    }`}>
-                      {item.topicName}
-                    </p>
-                    <p className={`text-xs transition-colors ${
+            {recentlyAccepted.slice(0, 3).map((item) => {
+              const taskInSchedule = checkTaskInSchedule(item);
+              
+              return (
+                <div key={item.id} className={`flex items-center justify-between p-3 rounded-lg transition-colors ${
+                  isDark ? 'bg-emerald-900/30' : 'bg-emerald-100'
+                }`}>
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-2 h-2 rounded-full ${
+                      taskInSchedule ? 'bg-emerald-500' : 'bg-orange-500'
+                    }`}></div>
+                    <div>
+                      <p className={`font-medium text-sm transition-colors ${
+                        isDark ? 'text-emerald-200' : 'text-emerald-800'
+                      }`}>
+                        {item.topicName}
+                      </p>
+                      <p className={`text-xs transition-colors ${
+                        isDark ? 'text-emerald-400' : 'text-emerald-600'
+                      }`}>
+                        Scheduled for {formatDayName(item.day)} • {item.estimatedTime} min
+                        {taskInSchedule ? ' • ✓ In Schedule' : ' • ⏳ Processing'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className={`text-xs transition-colors ${
                       isDark ? 'text-emerald-400' : 'text-emerald-600'
                     }`}>
-                      Scheduled for {formatDayName(item.day)} • {item.estimatedTime} min
-                    </p>
+                      {item.acceptedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                    {taskInSchedule && (
+                      <button
+                        onClick={() => navigate('/schedule')}
+                        className={`text-xs px-2 py-1 rounded transition-colors ${
+                          isDark 
+                            ? 'bg-emerald-800 text-emerald-200 hover:bg-emerald-700' 
+                            : 'bg-emerald-200 text-emerald-800 hover:bg-emerald-300'
+                        }`}
+                      >
+                        View
+                      </button>
+                    )}
                   </div>
                 </div>
-                <div className={`text-xs transition-colors ${
-                  isDark ? 'text-emerald-400' : 'text-emerald-600'
-                }`}>
-                  {item.acceptedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

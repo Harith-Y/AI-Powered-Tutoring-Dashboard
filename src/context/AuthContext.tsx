@@ -205,6 +205,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const topic = availableTopics.find(t => t.id === topicId);
       if (!topic) throw new Error('Topic not found');
 
+      console.log('AuthContext: Completing topic', topicId, topic.name, 'with score', score);
+
       await addProgress(currentUser.uid, {
         topicId: topic.id,
         topicName: topic.name,
@@ -214,6 +216,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         category: topic.category
       });
 
+      console.log('AuthContext: Topic completion saved, refreshing topics...');
       // Refresh topics to update completion status
       await refreshTopics();
     } catch (error) {
@@ -227,8 +230,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('AuthContext: Refreshing topics for user:', currentUser.uid);
       const topics = await getTopicsWithProgress(currentUser.uid);
-      console.log('AuthContext: Setting available topics:', topics.length, 'topics');
-      console.log('AuthContext: Topics data:', topics);
+      console.log('AuthContext: Loaded topics:', topics.length, 'total');
+      console.log('AuthContext: Available topics:', topics.filter(t => !t.isCompleted).length);
+      console.log('AuthContext: Completed topics:', topics.filter(t => t.isCompleted).length);
       setAvailableTopics(topics);
     } catch (error) {
       console.error('AuthContext: Error refreshing topics:', error);
@@ -255,10 +259,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Set up real-time listeners
       const unsubscribeProgress = subscribeToProgress(user.uid, (progress) => {
-        console.log('AuthContext: Progress updated:', progress.length, 'items');
+        console.log('AuthContext: subscribeToProgress: Progress updated, now have', progress.length, 'entries');
         setUserProgress(progress);
         // Refresh topics when progress changes to update completion status
-        setTimeout(() => refreshTopics(), 100); // Small delay to ensure progress is saved
+        setTimeout(() => {
+          console.log('AuthContext: Refreshing topics after progress update...');
+          refreshTopics();
+        }, 500); // Small delay to ensure progress is saved
       });
 
       const unsubscribeWeeklyPlan = subscribeToWeeklyPlan(user.uid, (plan) => {
@@ -305,11 +312,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCurrentUser(user);
         
         if (user) {
-          console.log('AuthContext: User authenticated:', user.uid);
+          console.log('User authenticated:', user.uid);
           // Update last login time
           await updateUserProfile(user.uid, { lastLoginAt: new Date() });
           
           // Load user data and set up listeners
+          console.log('Loading user data for:', user.uid);
           unsubscribeData = await loadUserData(user);
         } else {
           console.log('AuthContext: User logged out, clearing data');
@@ -346,7 +354,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     console.log('AuthContext: availableTopics state changed:', availableTopics.length, 'topics');
     if (availableTopics.length > 0) {
-      console.log('AuthContext: First few topics:', availableTopics.slice(0, 3).map(t => ({ id: t.id, name: t.name, isCompleted: t.isCompleted })));
+      const available = availableTopics.filter(t => !t.isCompleted);
+      const completed = availableTopics.filter(t => t.isCompleted);
+      console.log('AuthContext: Available topics:', available.length);
+      console.log('AuthContext: Completed topics:', completed.length);
+      console.log('AuthContext: First few available topics:', available.slice(0, 3).map(t => ({ id: t.id, name: t.name })));
     }
   }, [availableTopics]);
 

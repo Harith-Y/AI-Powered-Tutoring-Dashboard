@@ -23,54 +23,91 @@ const WhatsNext: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [acceptedRecommendations, setAcceptedRecommendations] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  const [lastFetchTime, setLastFetchTime] = useState<number>(0);
 
   const fetchRecommendations = async () => {
     if (!currentUser || !userProfile) return;
+
+    // Rate limiting: Don't fetch more than once every 30 seconds
+    const now = Date.now();
+    if (now - lastFetchTime < 30000) {
+      console.log('Rate limiting: Using cached recommendations');
+      return;
+    }
 
     setLoading(true);
     setError(null);
     
     try {
-      // Prepare topic history for the AI model
-      const topicHistory = (userProgress || []).map(progress => ({
-        topicName: progress.topicName,
-        category: progress.category,
-        score: progress.score,
-        difficulty: progress.difficulty
-      }));
+      // Always use fallback recommendations to avoid API rate limits
+      console.log('Using fallback recommendations to avoid API rate limits');
+      const fallbackRecommendations = getFallbackRecommendations();
+      setRecommendations(fallbackRecommendations);
+      setLastFetchTime(now);
+      
+      // Only try Mistral AI if explicitly configured and not rate limited
+      if (mistralService.isConfigured() && userProgress.length > 0) {
+        try {
+          // Prepare topic history for the AI model
+          const topicHistory = userProgress.map(progress => ({
+            topicName: progress.topicName,
+            category: progress.category,
+            score: progress.score,
+            difficulty: progress.difficulty
+          }));
 
-      if (mistralService.isConfigured()) {
-        // Use Mistral AI for recommendations
-        const aiRecommendations = await mistralService.generateTopicRecommendations(
-          topicHistory,
-          userProfile.skillLevel,
-          userProfile.preferredTopics || []
-        );
+          // Use a timeout to prevent hanging
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Request timeout')), 10000)
+          );
 
-        // Convert AI recommendations to our format
-        const formattedRecommendations: TopicRecommendation[] = aiRecommendations.map((rec, index) => ({
-          topicId: `ai-${Date.now()}-${index}`,
-          topicName: rec.topicName,
-          category: rec.category,
-          difficulty: rec.difficulty,
-          estimatedTime: getDifficultyTime(rec.difficulty),
-          confidence: rec.confidence,
-          reasoning: rec.reasoning,
-          prerequisites: getPrerequisites(rec.topicName, rec.category)
-        }));
+          const aiRecommendationsPromise = mistralService.generateTopicRecommendations(
+            topicHistory,
+            userProfile.skillLevel,
+            userProfile.preferredTopics || []
+          );
 
-        setRecommendations(formattedRecommendations);
-      } else {
-        // Fallback to rule-based recommendations
-        console.warn('Mistral AI not configured, using fallback recommendations');
-        setRecommendations(getFallbackRecommendations());
+          const aiRecommendations = await Promise.race([
+            aiRecommendationsPromise,
+            timeoutPromise
+          ]) as any[];
+
+          // Convert AI recommendations to our format
+          if (Array.isArray(aiRecommendations) && aiRecommendations.length > 0) {
+            const formattedRecommendations: TopicRecommendation[] = aiRecommendations.map((rec, index) => ({
+              topicId: rec.topicId || `ai-${Date.now()}-${index}`,
+              topicName: rec.topicName || 'Unknown Topic',
+              category: rec.category || 'General',
+              difficulty: rec.difficulty || userProfile.skillLevel,
+              estimatedTime: getDifficultyTime(rec.difficulty || userProfile.skillLevel),
+              confidence: rec.confidence || 0.7,
+              reasoning: rec.reasoning || 'Recommended based on your learning progress.',
+              prerequisites: getPrerequisites(rec.topicName || '', rec.category || '')
+            }));
+
+            setRecommendations(formattedRecommendations);
+            setError(null);
+          }
+        } catch (apiError: any) {
+          console.warn('Mistral API error (using fallback):', apiError.message);
+          // Keep fallback recommendations, just show a warning
+          if (apiError.message.includes('429') || apiError.message.includes('rate limit')) {
+            setError('API rate limit reached. Using smart recommendations. Please wait before refreshing.');
+          } else {
+            setError('AI service temporarily unavailable. Using smart recommendations.');
+          }
+        }
+      } else if (!mistralService.isConfigured()) {
         setError('Mistral AI not configured. Using smart recommendations based on your progress.');
       }
     } catch (error) {
       console.error('Error fetching recommendations:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       setError(errorMessage);
-      setRecommendations(getFallbackRecommendations());
+      // Ensure we always have fallback recommendations
+      if (recommendations.length === 0) {
+        setRecommendations(getFallbackRecommendations());
+      }
     } finally {
       setLoading(false);
     }
@@ -114,6 +151,7 @@ const WhatsNext: React.FC = () => {
     // Generate recommendations based on user's current progress and skill level
     const skillLevel = userProfile?.skillLevel || 'beginner';
     const completedTopics = userProgress?.map(p => p.topicName.toLowerCase()) || [];
+    const preferredTopics = userProfile?.preferredTopics || ['JavaScript', 'React', 'CSS'];
     
     const allRecommendations = [
       {
@@ -150,7 +188,7 @@ const WhatsNext: React.FC = () => {
         topicId: 'typescript-basics',
         topicName: 'TypeScript Fundamentals',
         category: 'TypeScript',
-        difficulty: 'beginner',
+        difficulty: 'intermediate',
         estimatedTime: 100,
         confidence: 0.80,
         reasoning: 'Add type safety to your JavaScript projects and improve code quality.',
@@ -193,15 +231,26 @@ const WhatsNext: React.FC = () => {
         return false;
       }
 
-      return true;
+      // Prefer topics that match user's interests
+      const matchesPreferences = preferredTopics.some(topic => 
+        rec.category.toLowerCase().includes(topic.toLowerCase()) ||
+        rec.topicName.toLowerCase().includes(topic.toLowerCase())
+      );
+
+      return matchesPreferences || userProgress.length < 3;
     });
 
     return filteredRecommendations.slice(0, 3);
   };
 
+  // Only fetch on mount and when user progress changes significantly
   useEffect(() => {
-    fetchRecommendations();
-  }, [currentUser, userProfile, userProgress]);
+    const timer = setTimeout(() => {
+      fetchRecommendations();
+    }, 1000); // Delay to avoid immediate API calls
+
+    return () => clearTimeout(timer);
+  }, [currentUser?.uid, userProfile?.skillLevel, userProgress?.length]);
 
   const handleAcceptRecommendation = async (recommendation: TopicRecommendation) => {
     if (!currentUser) return;
@@ -222,7 +271,6 @@ const WhatsNext: React.FC = () => {
       // Mark as accepted
       setAcceptedRecommendations(prev => new Set([...prev, recommendation.topicId]));
       
-      // Show success feedback (you could add a toast notification here)
       console.log(`Added "${recommendation.topicName}" to weekly plan`);
       
     } catch (error) {
@@ -283,15 +331,15 @@ const WhatsNext: React.FC = () => {
             <p className={`text-sm transition-colors ${
               isDark ? 'text-gray-400' : 'text-gray-600'
             }`}>
-              {error ? 'Smart recommendations based on your progress' : 'Mistral AI-powered recommendations based on your progress'}
+              Smart recommendations based on your progress
             </p>
           </div>
         </div>
         
         <button
           onClick={fetchRecommendations}
-          disabled={loading}
-          className={`flex items-center px-4 py-2 rounded-lg transition-colors disabled:opacity-50 ${
+          disabled={loading || (Date.now() - lastFetchTime < 30000)}
+          className={`flex items-center px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
             isDark 
               ? 'text-indigo-400 hover:text-indigo-300 hover:bg-gray-700' 
               : 'text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50'
@@ -304,38 +352,42 @@ const WhatsNext: React.FC = () => {
 
       {error && (
         <div className={`mb-6 p-4 border rounded-lg transition-colors ${
-          isDark 
-            ? 'bg-amber-900/20 border-amber-700/50' 
-            : 'bg-amber-50 border-amber-200'
+          error.includes('rate limit') || error.includes('429')
+            ? isDark 
+              ? 'bg-orange-900/20 border-orange-700/50' 
+              : 'bg-orange-50 border-orange-200'
+            : isDark 
+              ? 'bg-amber-900/20 border-amber-700/50' 
+              : 'bg-amber-50 border-amber-200'
         }`}>
           <div className="flex items-center mb-2">
             <AlertCircle className={`w-5 h-5 mr-2 transition-colors ${
-              isDark ? 'text-amber-400' : 'text-amber-600'
+              error.includes('rate limit') || error.includes('429')
+                ? isDark ? 'text-orange-400' : 'text-orange-600'
+                : isDark ? 'text-amber-400' : 'text-amber-600'
             }`} />
             <span className={`font-medium transition-colors ${
-              isDark ? 'text-amber-300' : 'text-amber-800'
+              error.includes('rate limit') || error.includes('429')
+                ? isDark ? 'text-orange-300' : 'text-orange-800'
+                : isDark ? 'text-amber-300' : 'text-amber-800'
             }`}>
-              Using Offline Mode
+              {error.includes('rate limit') || error.includes('429') ? 'Rate Limited' : 'Using Offline Mode'}
             </span>
           </div>
-          <p className={`text-sm mb-2 transition-colors ${
-            isDark ? 'text-amber-400' : 'text-amber-700'
+          <p className={`text-sm transition-colors ${
+            error.includes('rate limit') || error.includes('429')
+              ? isDark ? 'text-orange-400' : 'text-orange-700'
+              : isDark ? 'text-amber-400' : 'text-amber-700'
           }`}>
-            {error.includes('not configured') 
-              ? 'Mistral AI is not configured. Add your MISTRAL_API_KEY to enable AI-powered recommendations.'
-              : 'Unable to connect to Mistral AI service. Showing smart recommendations based on your progress.'
-            }
+            {error}
           </p>
-          <details className={`text-xs transition-colors ${
-            isDark ? 'text-amber-500' : 'text-amber-600'
-          }`}>
-            <summary className="cursor-pointer hover:text-amber-800 dark:hover:text-amber-300">Technical details</summary>
-            <p className={`mt-1 font-mono p-2 rounded transition-colors ${
-              isDark ? 'bg-amber-900/30' : 'bg-amber-100'
+          {error.includes('rate limit') && (
+            <p className={`text-xs mt-2 transition-colors ${
+              isDark ? 'text-orange-500' : 'text-orange-600'
             }`}>
-              {error}
+              Please wait 30 seconds before refreshing to avoid hitting API limits.
             </p>
-          </details>
+          )}
         </div>
       )}
 
@@ -442,7 +494,7 @@ const WhatsNext: React.FC = () => {
                     <span className={`text-xs transition-colors ${
                       isDark ? 'text-gray-400' : 'text-gray-500'
                     }`}>
-                      {error ? 'Smart Algorithm' : `Powered by ${mistralService.getModel()}`}
+                      Smart Algorithm
                     </span>
                   </div>
                   
@@ -503,11 +555,8 @@ const WhatsNext: React.FC = () => {
         <p className={`text-sm transition-colors ${
           isDark ? 'text-purple-400' : 'text-purple-700'
         }`}>
-          {error ? (
-            'Our smart recommendation system analyzes your learning history, skill level, and preferences to suggest relevant next topics. When Mistral AI is configured, we use advanced language models for even more personalized recommendations.'
-          ) : (
-            `Our Mistral AI-powered recommendation engine (${mistralService.getModel()}) analyzes your learning history, skill level, and preferences to suggest the most relevant next topics. Each recommendation includes confidence scores and reasoning to help you make informed learning decisions.`
-          )}
+          Our smart recommendation system analyzes your learning history, skill level, and preferences to suggest relevant next topics. 
+          Rate limiting is in place to prevent API overuse while ensuring you always get quality recommendations.
         </p>
       </div>
     </div>

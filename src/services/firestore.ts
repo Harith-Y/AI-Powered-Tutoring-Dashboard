@@ -108,9 +108,18 @@ export const subscribeToLearningGoals = (uid: string, callback: (goals: Learning
 
 // Topics Operations
 export const getAvailableTopics = async (): Promise<Topic[]> => {
-  // For now, return a curated list of topics
-  // In a real app, this would come from a topics collection
+  // Curated list of topics with consistent IDs
   return [
+    {
+      id: 'javascript-fundamentals',
+      name: 'JavaScript Fundamentals',
+      description: 'Core JavaScript concepts including variables, functions, and objects',
+      category: 'JavaScript',
+      difficulty: 'beginner',
+      estimatedTime: 150,
+      prerequisites: [],
+      skills: ['Variables', 'Functions', 'Objects', 'Arrays', 'Control Flow']
+    },
     {
       id: 'react-fundamentals',
       name: 'React Fundamentals',
@@ -122,24 +131,14 @@ export const getAvailableTopics = async (): Promise<Topic[]> => {
       skills: ['Components', 'JSX', 'Props', 'State']
     },
     {
-      id: 'react-hooks',
-      name: 'React Hooks',
-      description: 'Master React hooks including useState, useEffect, and custom hooks',
-      category: 'React',
-      difficulty: 'intermediate',
-      estimatedTime: 90,
-      prerequisites: ['React Fundamentals'],
-      skills: ['useState', 'useEffect', 'Custom Hooks', 'Hook Rules']
-    },
-    {
-      id: 'javascript-fundamentals',
-      name: 'JavaScript Fundamentals',
-      description: 'Core JavaScript concepts including variables, functions, and objects',
-      category: 'JavaScript',
+      id: 'css-fundamentals',
+      name: 'CSS Fundamentals',
+      description: 'Learn CSS basics including selectors, properties, and the box model',
+      category: 'CSS',
       difficulty: 'beginner',
-      estimatedTime: 150,
+      estimatedTime: 90,
       prerequisites: [],
-      skills: ['Variables', 'Functions', 'Objects', 'Arrays', 'Control Flow']
+      skills: ['Selectors', 'Box Model', 'Typography', 'Colors']
     },
     {
       id: 'javascript-async',
@@ -152,14 +151,14 @@ export const getAvailableTopics = async (): Promise<Topic[]> => {
       skills: ['Promises', 'Async/Await', 'Fetch API', 'Error Handling']
     },
     {
-      id: 'css-fundamentals',
-      name: 'CSS Fundamentals',
-      description: 'Learn CSS basics including selectors, properties, and the box model',
-      category: 'CSS',
-      difficulty: 'beginner',
+      id: 'react-hooks',
+      name: 'React Hooks',
+      description: 'Master React hooks including useState, useEffect, and custom hooks',
+      category: 'React',
+      difficulty: 'intermediate',
       estimatedTime: 90,
-      prerequisites: [],
-      skills: ['Selectors', 'Box Model', 'Typography', 'Colors']
+      prerequisites: ['React Fundamentals'],
+      skills: ['useState', 'useEffect', 'Custom Hooks', 'Hook Rules']
     },
     {
       id: 'css-flexbox',
@@ -210,6 +209,26 @@ export const getAvailableTopics = async (): Promise<Topic[]> => {
       estimatedTime: 120,
       prerequisites: ['React Fundamentals', 'React Hooks'],
       skills: ['Context API', 'useReducer', 'State Patterns', 'Performance']
+    },
+    {
+      id: 'javascript-es6',
+      name: 'JavaScript ES6+ Features',
+      description: 'Modern JavaScript features including arrow functions, destructuring, and modules',
+      category: 'JavaScript',
+      difficulty: 'intermediate',
+      estimatedTime: 95,
+      prerequisites: ['JavaScript Fundamentals'],
+      skills: ['Arrow Functions', 'Destructuring', 'Modules', 'Template Literals', 'Spread Operator']
+    },
+    {
+      id: 'web-apis',
+      name: 'Web APIs & Fetch',
+      description: 'Learn to work with REST APIs, fetch data, and handle responses',
+      category: 'JavaScript',
+      difficulty: 'intermediate',
+      estimatedTime: 80,
+      prerequisites: ['JavaScript Fundamentals', 'Async JavaScript'],
+      skills: ['Fetch API', 'REST APIs', 'JSON', 'Error Handling', 'HTTP Methods']
     }
   ];
 };
@@ -219,6 +238,7 @@ export const getTopicsWithProgress = async (uid: string): Promise<Topic[]> => {
   const progress = await getUserProgress(uid);
   
   return topics.map(topic => {
+    // Check if this topic has been completed by matching topicId
     const topicProgress = progress.find(p => p.topicId === topic.id);
     return {
       ...topic,

@@ -103,6 +103,9 @@ export const subscribeToLearningGoals = (uid: string, callback: (goals: Learning
       targetDate: doc.data().targetDate?.toDate() || null
     })) as LearningGoal[];
     callback(goals);
+  }, (error) => {
+    console.error('Firestore: Learning goals subscription error:', error);
+    callback([]);
   });
 };
 

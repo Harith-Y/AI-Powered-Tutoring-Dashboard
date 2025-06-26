@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { Trophy, Target, Flame, Clock, CheckCircle, BookOpen, TrendingUp, Sparkles, Star, Zap, Plus, X, Save, Calendar, Play } from 'lucide-react';
+import { Trophy, Target, Flame, Clock, CheckCircle, BookOpen, TrendingUp, Sparkles, Star, Zap, Plus, X, Save, Calendar, Play, RefreshCw } from 'lucide-react';
 import WhatsNext from './WhatsNext';
 
 const ProgressOverview: React.FC = () => {
@@ -16,13 +16,15 @@ const ProgressOverview: React.FC = () => {
     updateGoal,
     deleteGoal,
     completeGoal,
-    completeTopic
+    completeTopic,
+    refreshTopics
   } = useAuth();
   const { isDark } = useTheme();
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [showTopics, setShowTopics] = useState(false);
   const [showTopicModal, setShowTopicModal] = useState(false);
   const [selectedTopic, setSelectedTopic] = useState<any>(null);
+  const [refreshingTopics, setRefreshingTopics] = useState(false);
   const [newGoal, setNewGoal] = useState({
     title: '',
     description: '',
@@ -44,8 +46,22 @@ const ProgressOverview: React.FC = () => {
   const activeGoals = learningGoals.filter(goal => !goal.isCompleted);
   const completedGoals = learningGoals.filter(goal => goal.isCompleted);
 
+  // Topics breakdown with better debugging
+  const availableTopicsToShow = availableTopics.filter(topic => !topic.isCompleted);
+  const completedTopics = availableTopics.filter(topic => topic.isCompleted);
+
+  // Debug effect to log topics data
+  useEffect(() => {
+    console.log('ProgressOverview: Topics data update:', {
+      totalAvailableTopics: availableTopics.length,
+      availableTopicsToShow: availableTopicsToShow.length,
+      completedTopics: completedTopics.length,
+      firstFewAvailable: availableTopicsToShow.slice(0, 3).map(t => ({ id: t.id, name: t.name, isCompleted: t.isCompleted }))
+    });
+  }, [availableTopics, availableTopicsToShow, completedTopics]);
+
   // Clear messages after 3 seconds
-  React.useEffect(() => {
+  useEffect(() => {
     if (error || success) {
       const timer = setTimeout(() => {
         setError(null);
@@ -54,6 +70,19 @@ const ProgressOverview: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [error, success]);
+
+  const handleRefreshTopics = async () => {
+    setRefreshingTopics(true);
+    try {
+      await refreshTopics();
+      setSuccess('Topics refreshed successfully!');
+    } catch (error) {
+      console.error('Error refreshing topics:', error);
+      setError('Failed to refresh topics. Please try again.');
+    } finally {
+      setRefreshingTopics(false);
+    }
+  };
 
   const handleAddGoal = async () => {
     if (!currentUser || !newGoal.title.trim()) {
@@ -200,9 +229,6 @@ const ProgressOverview: React.FC = () => {
     'Build a portfolio project',
     'Master CSS Grid and Flexbox'
   ];
-
-  const availableTopicsToShow = availableTopics.filter(topic => !topic.isCompleted);
-  const completedTopics = availableTopics.filter(topic => topic.isCompleted);
 
   return (
     <div className={`space-y-8 transition-colors ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
@@ -561,16 +587,39 @@ const ProgressOverview: React.FC = () => {
                   </p>
                 </div>
               </div>
-              <button 
-                onClick={() => setShowTopics(!showTopics)}
-                className="btn-secondary"
-              >
-                {showTopics ? 'Hide' : 'View All'}
-              </button>
+              <div className="flex items-center space-x-2">
+                <button 
+                  onClick={handleRefreshTopics}
+                  disabled={refreshingTopics}
+                  className={`flex items-center px-3 py-2 rounded-lg transition-colors disabled:opacity-50 ${
+                    isDark 
+                      ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700' 
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                  }`}
+                  title="Refresh topics"
+                >
+                  <RefreshCw className={`w-4 h-4 ${refreshingTopics ? 'animate-spin' : ''}`} />
+                </button>
+                <button 
+                  onClick={() => setShowTopics(!showTopics)}
+                  className="btn-secondary"
+                >
+                  {showTopics ? 'Hide' : 'View All'}
+                </button>
+              </div>
             </div>
             
+            {/* Debug Info */}
+            {process.env.NODE_ENV === 'development' && (
+              <div className={`mb-4 p-3 rounded-lg text-xs transition-colors ${
+                isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
+              }`}>
+                Debug: Total topics: {availableTopics.length}, Available: {availableTopicsToShow.length}, Completed: {completedTopics.length}
+              </div>
+            )}
+            
             <div className="space-y-3 max-h-80 overflow-y-auto">
-              {availableTopicsToShow.length ? (
+              {availableTopicsToShow.length > 0 ? (
                 availableTopicsToShow.slice(0, showTopics ? undefined : 5).map((topic) => (
                   <div key={topic.id} className={`p-4 rounded-lg border transition-all hover:shadow-sm ${
                     isDark 
@@ -624,9 +673,27 @@ const ProgressOverview: React.FC = () => {
                     </div>
                   </div>
                 ))
+              ) : availableTopics.length === 0 ? (
+                <div className="text-center py-8">
+                  <BookOpen className={`w-12 h-12 mx-auto mb-4 transition-colors ${
+                    isDark ? 'text-gray-600' : 'text-gray-300'
+                  }`} />
+                  <p className={`mb-2 transition-colors ${
+                    isDark ? 'text-gray-400' : 'text-gray-500'
+                  }`}>
+                    Loading topics...
+                  </p>
+                  <button 
+                    onClick={handleRefreshTopics}
+                    disabled={refreshingTopics}
+                    className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium transition-colors disabled:opacity-50"
+                  >
+                    {refreshingTopics ? 'Refreshing...' : 'Refresh Topics'}
+                  </button>
+                </div>
               ) : (
                 <div className="text-center py-8">
-                  <CheckCircle className={`w-12 h-12 mx-auto mb-4 text-emerald-500`} />
+                  <CheckCircle className={`w-12 h-12 mx-auto mb-4 text-emerald-500`}/>
                   <p className={`mb-2 transition-colors ${
                     isDark ? 'text-gray-400' : 'text-gray-500'
                   }`}>

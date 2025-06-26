@@ -231,16 +231,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const refreshTopics = async () => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      console.log('AuthContext: No current user, cannot refresh topics');
+      return;
+    }
+    
     try {
       console.log('AuthContext: Refreshing topics for user:', currentUser.uid);
       const topics = await getTopicsWithProgress(currentUser.uid);
       console.log('AuthContext: Loaded topics:', topics.length, 'total');
       console.log('AuthContext: Available topics:', topics.filter(t => !t.isCompleted).length);
       console.log('AuthContext: Completed topics:', topics.filter(t => t.isCompleted).length);
+      
+      // Log first few topics for debugging
+      if (topics.length > 0) {
+        console.log('AuthContext: First 3 topics:', topics.slice(0, 3).map(t => ({
+          id: t.id,
+          name: t.name,
+          isCompleted: t.isCompleted,
+          category: t.category
+        })));
+      }
+      
       setAvailableTopics(topics);
     } catch (error) {
       console.error('AuthContext: Error refreshing topics:', error);
+      // Set empty array on error to prevent crashes
+      setAvailableTopics([]);
     }
   };
 
@@ -258,13 +275,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const stats = await getWeeklyStats(user.uid);
       setWeeklyStats(stats);
 
-      // Load topics with progress - this is critical
+      // Load topics with progress - this is critical for the overview page
       console.log('AuthContext: Loading topics with progress...');
       await refreshTopics();
 
       // Set up real-time listeners
       const unsubscribeProgress = subscribeToProgress(user.uid, (progress) => {
-        console.log('AuthContext: subscribeToProgress: Progress updated, now have', progress.length, 'entries');
+        console.log('AuthContext: Progress subscription update - now have', progress.length, 'entries');
         setUserProgress(progress);
         // Refresh topics when progress changes to update completion status
         setTimeout(() => {
@@ -311,6 +328,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Initial topics load effect - Load topics immediately when component mounts
+  useEffect(() => {
+    console.log('AuthContext: Initial topics load effect triggered');
+    
+    // Load topics immediately even without a user to show the base topics
+    const loadInitialTopics = async () => {
+      try {
+        if (currentUser) {
+          console.log('AuthContext: Loading topics with progress for authenticated user');
+          await refreshTopics();
+        } else {
+          console.log('AuthContext: Loading base topics for unauthenticated state');
+          // Load base topics without progress for unauthenticated users
+          const { getAvailableTopics } = await import('../services/firestore');
+          const baseTopics = getAvailableTopics();
+          const topicsWithoutProgress = baseTopics.map(topic => ({
+            ...topic,
+            isCompleted: false
+          }));
+          setAvailableTopics(topicsWithoutProgress);
+          console.log('AuthContext: Loaded', topicsWithoutProgress.length, 'base topics');
+        }
+      } catch (error) {
+        console.error('AuthContext: Error in initial topics load:', error);
+      }
+    };
+
+    loadInitialTopics();
+  }, [currentUser]); // Re-run when currentUser changes
+
   useEffect(() => {
     let unsubscribeData: (() => void) | undefined;
 
@@ -335,7 +382,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setWeeklyPlan([]);
           setWeeklyStats(null);
           setLearningGoals([]);
-          setAvailableTopics([]);
+          // Keep base topics available for unauthenticated users
+          const { getAvailableTopics } = await import('../services/firestore');
+          const baseTopics = getAvailableTopics();
+          const topicsWithoutProgress = baseTopics.map(topic => ({
+            ...topic,
+            isCompleted: false
+          }));
+          setAvailableTopics(topicsWithoutProgress);
           
           if (unsubscribeData) {
             unsubscribeData();
@@ -366,8 +420,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('AuthContext: Available topics:', available.length);
       console.log('AuthContext: Completed topics:', completed.length);
       console.log('AuthContext: First few available topics:', available.slice(0, 3).map(t => ({ id: t.id, name: t.name })));
+      console.log('AuthContext: First few completed topics:', completed.slice(0, 3).map(t => ({ id: t.id, name: t.name })));
+    } else {
+      console.log('AuthContext: No topics available - this might be the issue!');
     }
   }, [availableTopics]);
+
+  // Debug effect to log when user progress changes
+  useEffect(() => {
+    console.log('AuthContext: userProgress state changed:', userProgress.length, 'progress entries');
+    if (userProgress.length > 0) {
+      console.log('AuthContext: Recent progress entries:', userProgress.slice(0, 3).map(p => ({
+        topicId: p.topicId,
+        topicName: p.topicName,
+        score: p.score
+      })));
+    }
+  }, [userProgress]);
 
   const value = {
     currentUser,

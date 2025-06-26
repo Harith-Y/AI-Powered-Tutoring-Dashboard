@@ -1,13 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Calendar, Clock, Plus, CheckCircle, Circle, Zap, Edit, Trash2 } from 'lucide-react';
+import { useTheme } from '../../context/ThemeContext';
+import { Calendar, Clock, Plus, CheckCircle, Circle, Zap, Edit, Trash2, X, Save } from 'lucide-react';
 import { WeeklyPlanItem } from '../../types';
 import { addWeeklyPlanItem, updateWeeklyPlanItem, deleteWeeklyPlanItem } from '../../services/firestore';
 
 const SchedulePlanner: React.FC = () => {
   const { currentUser, userProfile, weeklyPlan, userPreferences } = useAuth();
+  const { isDark } = useTheme();
   const [selectedDay, setSelectedDay] = useState(new Date());
   const [showAddTask, setShowAddTask] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [newTask, setNewTask] = useState<Partial<WeeklyPlanItem>>({
     day: '',
     topic: '',
@@ -19,20 +24,52 @@ const SchedulePlanner: React.FC = () => {
     priority: 'medium'
   });
 
+  // Clear messages after 3 seconds
+  useEffect(() => {
+    if (error || success) {
+      const timer = setTimeout(() => {
+        setError(null);
+        setSuccess(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [error, success]);
+
   const toggleTask = async (taskId: string, completed: boolean) => {
     if (!currentUser) return;
     try {
       await updateWeeklyPlanItem(currentUser.uid, taskId, { completed: !completed });
+      setSuccess('Task updated successfully!');
     } catch (error) {
       console.error('Error updating task:', error);
+      setError('Failed to update task. Please try again.');
     }
   };
 
   const handleAddTask = async () => {
-    if (!currentUser || !newTask.topic || !newTask.day) return;
+    if (!currentUser || !newTask.topic || !newTask.day) {
+      setError('Please fill in all required fields (Topic and Day)');
+      return;
+    }
+    
+    setLoading(true);
+    setError(null);
     
     try {
-      await addWeeklyPlanItem(currentUser.uid, newTask as Omit<WeeklyPlanItem, 'id'>);
+      const taskToAdd: Omit<WeeklyPlanItem, 'id'> = {
+        day: newTask.day,
+        topic: newTask.topic,
+        description: newTask.description || '',
+        estimatedTime: newTask.estimatedTime || 30,
+        difficulty: newTask.difficulty || 'medium',
+        type: newTask.type || 'lesson',
+        completed: false,
+        priority: newTask.priority || 'medium'
+      };
+
+      await addWeeklyPlanItem(currentUser.uid, taskToAdd);
+      
+      // Reset form
       setNewTask({
         day: '',
         topic: '',
@@ -43,27 +80,48 @@ const SchedulePlanner: React.FC = () => {
         completed: false,
         priority: 'medium'
       });
+      
       setShowAddTask(false);
+      setSuccess('Task added successfully!');
     } catch (error) {
       console.error('Error adding task:', error);
+      setError('Failed to add task. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleDeleteTask = async (taskId: string) => {
     if (!currentUser) return;
+    
+    if (!confirm('Are you sure you want to delete this task?')) {
+      return;
+    }
+    
     try {
       await deleteWeeklyPlanItem(currentUser.uid, taskId);
+      setSuccess('Task deleted successfully!');
     } catch (error) {
       console.error('Error deleting task:', error);
+      setError('Failed to delete task. Please try again.');
     }
   };
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
-      case 'easy': return 'text-emerald-600 bg-emerald-100';
-      case 'medium': return 'text-orange-600 bg-orange-100';
-      case 'hard': return 'text-red-600 bg-red-100';
-      default: return 'text-gray-600 bg-gray-100';
+      case 'easy': return isDark ? 'text-emerald-400 bg-emerald-900/30' : 'text-emerald-600 bg-emerald-100';
+      case 'medium': return isDark ? 'text-orange-400 bg-orange-900/30' : 'text-orange-600 bg-orange-100';
+      case 'hard': return isDark ? 'text-red-400 bg-red-900/30' : 'text-red-600 bg-red-100';
+      default: return isDark ? 'text-gray-400 bg-gray-700' : 'text-gray-600 bg-gray-100';
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'high': return isDark ? 'text-red-400 bg-red-900/30' : 'text-red-600 bg-red-100';
+      case 'medium': return isDark ? 'text-orange-400 bg-orange-900/30' : 'text-orange-600 bg-orange-100';
+      case 'low': return isDark ? 'text-green-400 bg-green-900/30' : 'text-green-600 bg-green-100';
+      default: return isDark ? 'text-gray-400 bg-gray-700' : 'text-gray-600 bg-gray-100';
     }
   };
 
@@ -93,18 +151,51 @@ const SchedulePlanner: React.FC = () => {
   const weeklyStudyTime = weeklyPlan.reduce((acc, task) => acc + task.estimatedTime, 0);
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 transition-colors ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
+      {/* Success/Error Messages */}
+      {(error || success) && (
+        <div className={`p-4 rounded-lg border transition-colors ${
+          error 
+            ? isDark 
+              ? 'bg-red-900/20 border-red-700/50 text-red-400' 
+              : 'bg-red-50 border-red-200 text-red-700'
+            : isDark 
+              ? 'bg-green-900/20 border-green-700/50 text-green-400' 
+              : 'bg-green-50 border-green-200 text-green-700'
+        }`}>
+          <div className="flex items-center justify-between">
+            <span>{error || success}</span>
+            <button
+              onClick={() => { setError(null); setSuccess(null); }}
+              className={`p-1 rounded transition-colors ${
+                isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+              }`}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className={`rounded-xl shadow-sm border p-6 transition-colors ${
+          isDark 
+            ? 'bg-gray-800 border-gray-700' 
+            : 'bg-white border-gray-200'
+        }`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Today's Progress</p>
-              <p className="text-2xl font-bold text-gray-900">{completedTasks}/{totalTasks}</p>
+              <p className={`text-sm transition-colors ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                Today's Progress
+              </p>
+              <p className={`text-2xl font-bold transition-colors ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
+                {completedTasks}/{totalTasks}
+              </p>
             </div>
             <div className="w-16 h-16 relative">
               <svg className="transform -rotate-90 w-16 h-16">
-                <circle cx="32" cy="32" r="28" stroke="#e5e7eb" strokeWidth="4" fill="none" />
+                <circle cx="32" cy="32" r="28" stroke={isDark ? '#374151' : '#e5e7eb'} strokeWidth="4" fill="none" />
                 <circle
                   cx="32"
                   cy="32"
@@ -117,22 +208,32 @@ const SchedulePlanner: React.FC = () => {
                 />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-sm font-semibold text-gray-900">{completionRate}%</span>
+                <span className={`text-sm font-semibold transition-colors ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
+                  {completionRate}%
+                </span>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className={`rounded-xl shadow-sm border p-6 transition-colors ${
+          isDark 
+            ? 'bg-gray-800 border-gray-700' 
+            : 'bg-white border-gray-200'
+        }`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Weekly Study Time</p>
-              <p className="text-2xl font-bold text-gray-900">{Math.round(weeklyStudyTime / 60)}h</p>
+              <p className={`text-sm transition-colors ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                Weekly Study Time
+              </p>
+              <p className={`text-2xl font-bold transition-colors ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
+                {Math.round(weeklyStudyTime / 60)}h
+              </p>
             </div>
             <Clock className="w-8 h-8 text-emerald-600" />
           </div>
           <div className="mt-2">
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className={`w-full rounded-full h-2 transition-colors ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`}>
               <div
                 className="bg-emerald-500 h-2 rounded-full transition-all duration-300"
                 style={{ 
@@ -140,17 +241,25 @@ const SchedulePlanner: React.FC = () => {
                 }}
               ></div>
             </div>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className={`text-xs mt-1 transition-colors ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
               Target: {Math.round((userPreferences?.availableTimePerDay || 60) * 7 / 60)}h/week
             </p>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className={`rounded-xl shadow-sm border p-6 transition-colors ${
+          isDark 
+            ? 'bg-gray-800 border-gray-700' 
+            : 'bg-white border-gray-200'
+        }`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Weekly Progress</p>
-              <p className="text-2xl font-bold text-gray-900">{weeklyCompletedTasks}/{weeklyTotalTasks}</p>
+              <p className={`text-sm transition-colors ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                Weekly Progress
+              </p>
+              <p className={`text-2xl font-bold transition-colors ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
+                {weeklyCompletedTasks}/{weeklyTotalTasks}
+              </p>
             </div>
             <Zap className="w-8 h-8 text-orange-600" />
           </div>
@@ -159,10 +268,16 @@ const SchedulePlanner: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Weekly Calendar */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className={`rounded-xl shadow-sm border p-6 transition-colors ${
+          isDark 
+            ? 'bg-gray-800 border-gray-700' 
+            : 'bg-white border-gray-200'
+        }`}>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">This Week</h3>
-            <Calendar className="w-5 h-5 text-gray-500" />
+            <h3 className={`text-lg font-semibold transition-colors ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
+              This Week
+            </h3>
+            <Calendar className={`w-5 h-5 transition-colors ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
           </div>
           
           <div className="space-y-2">
@@ -178,12 +293,14 @@ const SchedulePlanner: React.FC = () => {
                 <button
                   key={day}
                   onClick={() => setSelectedDay(date)}
-                  className={`w-full text-left p-3 rounded-lg transition-colors ${
+                  className={`w-full text-left p-3 rounded-lg transition-all ${
                     isSelected
-                      ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+                      ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700'
                       : isToday
-                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                      : 'hover:bg-gray-50 border border-transparent'
+                      ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700'
+                      : isDark 
+                        ? 'hover:bg-gray-700 border border-transparent text-gray-300'
+                        : 'hover:bg-gray-50 border border-transparent text-gray-700'
                   }`}
                 >
                   <div className="flex justify-between items-center">
@@ -215,14 +332,21 @@ const SchedulePlanner: React.FC = () => {
 
         {/* Task List */}
         <div className="lg:col-span-2">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className={`rounded-xl shadow-sm border p-6 transition-colors ${
+            isDark 
+              ? 'bg-gray-800 border-gray-700' 
+              : 'bg-white border-gray-200'
+          }`}>
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-gray-900">
+              <h3 className={`text-lg font-semibold transition-colors ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
                 Tasks for {selectedDay.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
               </h3>
               <button 
-                onClick={() => setShowAddTask(true)}
-                className="flex items-center px-3 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg transition-colors"
+                onClick={() => {
+                  setShowAddTask(true);
+                  setNewTask(prev => ({ ...prev, day: selectedDayName }));
+                }}
+                className="flex items-center px-3 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
               >
                 <Plus className="w-4 h-4 mr-1" />
                 Add Task
@@ -231,25 +355,63 @@ const SchedulePlanner: React.FC = () => {
 
             {/* Add Task Form */}
             {showAddTask && (
-              <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <h4 className="font-medium text-gray-900 mb-3">Add New Task</h4>
+              <div className={`mb-6 p-4 rounded-lg border transition-colors ${
+                isDark 
+                  ? 'bg-gray-700 border-gray-600' 
+                  : 'bg-gray-50 border-gray-200'
+              }`}>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className={`font-medium transition-colors ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
+                    Add New Task
+                  </h4>
+                  <button
+                    onClick={() => setShowAddTask(false)}
+                    className={`p-1 rounded transition-colors ${
+                      isDark 
+                        ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-600' 
+                        : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Topic</label>
+                    <label className={`block text-sm font-medium mb-1 transition-colors ${
+                      isDark ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
+                      Topic *
+                    </label>
                     <input
                       type="text"
                       value={newTask.topic || ''}
                       onChange={(e) => setNewTask({ ...newTask, topic: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors ${
+                        isDark 
+                          ? 'bg-gray-800 border-gray-600 text-gray-100 placeholder-gray-400' 
+                          : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
+                      }`}
                       placeholder="Enter topic name"
+                      required
                     />
                   </div>
+                  
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Day</label>
+                    <label className={`block text-sm font-medium mb-1 transition-colors ${
+                      isDark ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
+                      Day *
+                    </label>
                     <select
                       value={newTask.day || selectedDayName}
                       onChange={(e) => setNewTask({ ...newTask, day: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors ${
+                        isDark 
+                          ? 'bg-gray-800 border-gray-600 text-gray-100' 
+                          : 'bg-white border-gray-300 text-gray-900'
+                      }`}
+                      required
                     >
                       {weekDays.map((day, index) => (
                         <option key={day} value={day}>
@@ -258,65 +420,140 @@ const SchedulePlanner: React.FC = () => {
                       ))}
                     </select>
                   </div>
+                  
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                    <label className={`block text-sm font-medium mb-1 transition-colors ${
+                      isDark ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
+                      Type
+                    </label>
                     <select
                       value={newTask.type || 'lesson'}
                       onChange={(e) => setNewTask({ ...newTask, type: e.target.value as any })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors ${
+                        isDark 
+                          ? 'bg-gray-800 border-gray-600 text-gray-100' 
+                          : 'bg-white border-gray-300 text-gray-900'
+                      }`}
                     >
-                      <option value="lesson">Lesson</option>
-                      <option value="practice">Practice</option>
-                      <option value="project">Project</option>
-                      <option value="review">Review</option>
+                      <option value="lesson">📚 Lesson</option>
+                      <option value="practice">💻 Practice</option>
+                      <option value="project">🚀 Project</option>
+                      <option value="review">🔄 Review</option>
                     </select>
                   </div>
+                  
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Difficulty</label>
+                    <label className={`block text-sm font-medium mb-1 transition-colors ${
+                      isDark ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
+                      Difficulty
+                    </label>
                     <select
                       value={newTask.difficulty || 'medium'}
                       onChange={(e) => setNewTask({ ...newTask, difficulty: e.target.value as any })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors ${
+                        isDark 
+                          ? 'bg-gray-800 border-gray-600 text-gray-100' 
+                          : 'bg-white border-gray-300 text-gray-900'
+                      }`}
                     >
                       <option value="easy">Easy</option>
                       <option value="medium">Medium</option>
                       <option value="hard">Hard</option>
                     </select>
                   </div>
+                  
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 transition-colors ${
+                      isDark ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
+                      Priority
+                    </label>
+                    <select
+                      value={newTask.priority || 'medium'}
+                      onChange={(e) => setNewTask({ ...newTask, priority: e.target.value as any })}
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors ${
+                        isDark 
+                          ? 'bg-gray-800 border-gray-600 text-gray-100' 
+                          : 'bg-white border-gray-300 text-gray-900'
+                      }`}
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 transition-colors ${
+                      isDark ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
+                      Estimated Time (minutes)
+                    </label>
+                    <input
+                      type="number"
+                      value={newTask.estimatedTime || 30}
+                      onChange={(e) => setNewTask({ ...newTask, estimatedTime: parseInt(e.target.value) || 30 })}
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors ${
+                        isDark 
+                          ? 'bg-gray-800 border-gray-600 text-gray-100' 
+                          : 'bg-white border-gray-300 text-gray-900'
+                      }`}
+                      min="15"
+                      max="240"
+                      step="15"
+                    />
+                  </div>
+                  
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <label className={`block text-sm font-medium mb-1 transition-colors ${
+                      isDark ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
+                      Description
+                    </label>
                     <textarea
                       value={newTask.description || ''}
                       onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors ${
+                        isDark 
+                          ? 'bg-gray-800 border-gray-600 text-gray-100 placeholder-gray-400' 
+                          : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
+                      }`}
                       rows={2}
                       placeholder="Brief description of the task"
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Estimated Time (minutes)</label>
-                    <input
-                      type="number"
-                      value={newTask.estimatedTime || 30}
-                      onChange={(e) => setNewTask({ ...newTask, estimatedTime: parseInt(e.target.value) })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                      min="15"
-                      max="240"
-                    />
-                  </div>
                 </div>
+                
                 <div className="flex justify-end space-x-3 mt-4">
                   <button
                     onClick={() => setShowAddTask(false)}
-                    className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium"
+                    className={`px-4 py-2 font-medium transition-colors ${
+                      isDark 
+                        ? 'text-gray-300 hover:text-gray-100' 
+                        : 'text-gray-600 hover:text-gray-800'
+                    }`}
+                    disabled={loading}
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleAddTask}
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+                    disabled={loading || !newTask.topic || !newTask.day}
+                    className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
                   >
-                    Add Task
+                    {loading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Adding...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4 mr-2" />
+                        Add Task
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
@@ -328,14 +565,22 @@ const SchedulePlanner: React.FC = () => {
                   key={task.id}
                   className={`p-4 rounded-lg border-2 transition-all hover:shadow-sm ${
                     task.completed
-                      ? 'bg-emerald-50 border-emerald-200'
-                      : 'bg-white border-gray-200 hover:border-gray-300'
+                      ? isDark 
+                        ? 'bg-emerald-900/20 border-emerald-700/50' 
+                        : 'bg-emerald-50 border-emerald-200'
+                      : isDark 
+                        ? 'bg-gray-700 border-gray-600 hover:border-gray-500' 
+                        : 'bg-white border-gray-200 hover:border-gray-300'
                   }`}
                 >
                   <div className="flex items-start space-x-3">
                     <button
                       onClick={() => toggleTask(task.id, task.completed)}
-                      className="mt-1 text-gray-400 hover:text-emerald-600 transition-colors"
+                      className={`mt-1 transition-colors ${
+                        isDark 
+                          ? 'text-gray-400 hover:text-emerald-400' 
+                          : 'text-gray-400 hover:text-emerald-600'
+                      }`}
                     >
                       {task.completed ? (
                         <CheckCircle className="w-5 h-5 text-emerald-600" />
@@ -347,42 +592,52 @@ const SchedulePlanner: React.FC = () => {
                     <div className="flex-1">
                       <div className="flex items-center space-x-2 mb-2">
                         <span className="text-lg">{getTypeIcon(task.type)}</span>
-                        <h4 className={`font-medium ${task.completed ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
+                        <h4 className={`font-medium ${
+                          task.completed 
+                            ? isDark ? 'text-gray-500 line-through' : 'text-gray-500 line-through'
+                            : isDark ? 'text-gray-100' : 'text-gray-900'
+                        }`}>
                           {task.topic}
                         </h4>
                         {task.priority === 'high' && (
-                          <span className="px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor('high')}`}>
                             High Priority
                           </span>
                         )}
                       </div>
                       
                       {task.description && (
-                        <p className="text-sm text-gray-600 mb-3">{task.description}</p>
+                        <p className={`text-sm mb-3 transition-colors ${
+                          isDark ? 'text-gray-400' : 'text-gray-600'
+                        }`}>
+                          {task.description}
+                        </p>
                       )}
                       
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
-                          <div className="flex items-center text-sm text-gray-500">
+                          <div className={`flex items-center text-sm transition-colors ${
+                            isDark ? 'text-gray-400' : 'text-gray-500'
+                          }`}>
                             <Clock className="w-4 h-4 mr-1" />
                             {task.estimatedTime}m
                           </div>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(task.difficulty)}`}>
                             {task.difficulty}
                           </span>
-                          <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium capitalize">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize transition-colors ${
+                            isDark ? 'bg-gray-600 text-gray-300' : 'bg-gray-100 text-gray-700'
+                          }`}>
                             {task.type}
                           </span>
-                          {task.scheduledTime && (
-                            <div className="flex items-center text-sm text-gray-500">
-                              <Clock className="w-4 h-4 mr-1" />
-                              {task.scheduledTime}
-                            </div>
-                          )}
                         </div>
                         <button
                           onClick={() => handleDeleteTask(task.id)}
-                          className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                          className={`p-1 transition-colors ${
+                            isDark 
+                              ? 'text-gray-400 hover:text-red-400' 
+                              : 'text-gray-400 hover:text-red-600'
+                          }`}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -394,11 +649,20 @@ const SchedulePlanner: React.FC = () => {
 
               {todayTasks.length === 0 && (
                 <div className="text-center py-8">
-                  <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500">No tasks scheduled for this day</p>
+                  <Calendar className={`w-12 h-12 mx-auto mb-4 transition-colors ${
+                    isDark ? 'text-gray-600' : 'text-gray-300'
+                  }`} />
+                  <p className={`mb-2 transition-colors ${
+                    isDark ? 'text-gray-400' : 'text-gray-500'
+                  }`}>
+                    No tasks scheduled for this day
+                  </p>
                   <button 
-                    onClick={() => setShowAddTask(true)}
-                    className="mt-2 text-indigo-600 hover:text-indigo-800 font-medium"
+                    onClick={() => {
+                      setShowAddTask(true);
+                      setNewTask(prev => ({ ...prev, day: selectedDayName }));
+                    }}
+                    className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium transition-colors"
                   >
                     Add your first task
                   </button>
@@ -410,7 +674,11 @@ const SchedulePlanner: React.FC = () => {
       </div>
 
       {/* AI Recommendations */}
-      <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl p-6 text-white">
+      <div className={`rounded-xl p-6 text-white transition-colors ${
+        isDark 
+          ? 'bg-gradient-to-r from-indigo-600 to-purple-700' 
+          : 'bg-gradient-to-r from-indigo-500 to-purple-600'
+      }`}>
         <div className="flex items-center mb-4">
           <Zap className="w-6 h-6 mr-3" />
           <h3 className="text-lg font-semibold">AI Schedule Recommendations</h3>

@@ -17,8 +17,13 @@ import {
   updateUserPreferences,
   subscribeToProgress,
   subscribeToWeeklyPlan,
-  getWeeklyStats
+  getWeeklyStats,
+  addLearningGoal,
+  removeLearningGoal,
+  updateLearningGoals
 } from '../services/firestore';
+import { onSnapshot, doc } from 'firebase/firestore';
+import { db } from '../firebase/config';
 
 interface AuthContextType {
   currentUser: FirebaseUser | null;
@@ -31,6 +36,9 @@ interface AuthContextType {
   signup: (email: string, password: string, displayName: string) => Promise<void>;
   logout: () => Promise<void>;
   updatePreferences: (preferences: UserPreferences) => Promise<void>;
+  addGoal: (goal: string) => Promise<void>;
+  removeGoal: (goal: string) => Promise<void>;
+  updateGoals: (goals: string[]) => Promise<void>;
   loading: boolean;
 }
 
@@ -125,14 +133,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Learning Goals CRUD Operations
+  const addGoal = async (goal: string) => {
+    if (!currentUser) throw new Error('User not authenticated');
+    try {
+      await addLearningGoal(currentUser.uid, goal);
+      // The real-time listener will update the state automatically
+    } catch (error) {
+      console.error('Add goal error:', error);
+      throw error;
+    }
+  };
+
+  const removeGoal = async (goal: string) => {
+    if (!currentUser) throw new Error('User not authenticated');
+    try {
+      await removeLearningGoal(currentUser.uid, goal);
+      // The real-time listener will update the state automatically
+    } catch (error) {
+      console.error('Remove goal error:', error);
+      throw error;
+    }
+  };
+
+  const updateGoals = async (goals: string[]) => {
+    if (!currentUser) throw new Error('User not authenticated');
+    try {
+      await updateLearningGoals(currentUser.uid, goals);
+      // The real-time listener will update the state automatically
+    } catch (error) {
+      console.error('Update goals error:', error);
+      throw error;
+    }
+  };
+
   const loadUserData = async (user: FirebaseUser) => {
     try {
-      // Load user profile
-      const profile = await getUserProfile(user.uid);
-      if (profile) {
-        setUserProfile(profile);
-      }
-
       // Load user preferences
       const preferences = await getUserPreferences(user.uid);
       if (preferences) {
@@ -152,10 +188,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setWeeklyPlan(plan);
       });
 
+      // Set up real-time listener for user profile (including learning goals)
+      const userRef = doc(db, 'users', user.uid);
+      const unsubscribeProfile = onSnapshot(userRef, (doc) => {
+        if (doc.exists()) {
+          const data = doc.data();
+          const profile: User = {
+            ...data,
+            id: user.uid,
+            createdAt: data.createdAt?.toDate() || new Date(),
+            lastLoginAt: data.lastLoginAt?.toDate() || new Date()
+          } as User;
+          setUserProfile(profile);
+        }
+      });
+
       // Store unsubscribe functions for cleanup
       return () => {
         unsubscribeProgress();
         unsubscribeWeeklyPlan();
+        unsubscribeProfile();
       };
     } catch (error) {
       console.error('Error loading user data:', error);
@@ -215,6 +267,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signup,
     logout,
     updatePreferences,
+    addGoal,
+    removeGoal,
+    updateGoals,
     loading
   };
 

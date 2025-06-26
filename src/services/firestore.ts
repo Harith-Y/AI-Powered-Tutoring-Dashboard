@@ -11,7 +11,9 @@ import {
   deleteDoc,
   where,
   getDocs,
-  Timestamp
+  Timestamp,
+  arrayUnion,
+  arrayRemove
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { User, UserPreferences, Progress, WeeklyPlanItem } from '../types';
@@ -48,6 +50,28 @@ export const updateUserProfile = async (uid: string, updates: Partial<User>) => 
     ...updates,
     lastLoginAt: Timestamp.now()
   }, { merge: true });
+};
+
+// Learning Goals Operations
+export const addLearningGoal = async (uid: string, goal: string) => {
+  const userRef = doc(db, 'users', uid);
+  await updateDoc(userRef, {
+    learningGoals: arrayUnion(goal)
+  });
+};
+
+export const removeLearningGoal = async (uid: string, goal: string) => {
+  const userRef = doc(db, 'users', uid);
+  await updateDoc(userRef, {
+    learningGoals: arrayRemove(goal)
+  });
+};
+
+export const updateLearningGoals = async (uid: string, goals: string[]) => {
+  const userRef = doc(db, 'users', uid);
+  await updateDoc(userRef, {
+    learningGoals: goals
+  });
 };
 
 // User Preferences Operations

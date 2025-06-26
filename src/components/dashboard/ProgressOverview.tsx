@@ -2,11 +2,10 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Trophy, Target, Flame, Clock, CheckCircle, BookOpen, TrendingUp, Sparkles, Star, Zap, Plus, X, Save } from 'lucide-react';
-import { updateUserProfile } from '../../services/firestore';
 import WhatsNext from './WhatsNext';
 
 const ProgressOverview: React.FC = () => {
-  const { currentUser, userProfile, userProgress = [], weeklyStats, weeklyPlan } = useAuth();
+  const { currentUser, userProfile, userProgress = [], weeklyStats, weeklyPlan, addGoal, removeGoal } = useAuth();
   const { isDark } = useTheme();
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [newGoal, setNewGoal] = useState('');
@@ -47,13 +46,7 @@ const ProgressOverview: React.FC = () => {
     setError(null);
 
     try {
-      const currentGoals = userProfile?.learningGoals || [];
-      const updatedGoals = [...currentGoals, newGoal.trim()];
-
-      await updateUserProfile(currentUser.uid, {
-        learningGoals: updatedGoals
-      });
-
+      await addGoal(newGoal.trim());
       setNewGoal('');
       setShowAddGoal(false);
       setSuccess('Goal added successfully!');
@@ -65,17 +58,15 @@ const ProgressOverview: React.FC = () => {
     }
   };
 
-  const handleRemoveGoal = async (goalIndex: number) => {
+  const handleRemoveGoal = async (goal: string) => {
     if (!currentUser) return;
 
+    if (!confirm('Are you sure you want to remove this goal?')) {
+      return;
+    }
+
     try {
-      const currentGoals = userProfile?.learningGoals || [];
-      const updatedGoals = currentGoals.filter((_, index) => index !== goalIndex);
-
-      await updateUserProfile(currentUser.uid, {
-        learningGoals: updatedGoals
-      });
-
+      await removeGoal(goal);
       setSuccess('Goal removed successfully!');
     } catch (error) {
       console.error('Error removing goal:', error);
@@ -263,12 +254,13 @@ const ProgressOverview: React.FC = () => {
                         </div>
                         <Sparkles className="w-4 h-4 text-indigo-500" />
                         <button
-                          onClick={() => handleRemoveGoal(index)}
+                          onClick={() => handleRemoveGoal(goal)}
                           className={`opacity-0 group-hover:opacity-100 p-1 rounded transition-all ${
                             isDark 
                               ? 'text-gray-400 hover:text-red-400 hover:bg-gray-600' 
                               : 'text-gray-400 hover:text-red-600 hover:bg-gray-100'
                           }`}
+                          title="Remove goal"
                         >
                           <X className="w-3 h-3" />
                         </button>
@@ -331,7 +323,8 @@ const ProgressOverview: React.FC = () => {
                         ? 'bg-gray-800 border-gray-600 text-gray-100 placeholder-gray-400' 
                         : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
                     }`}
-                    onKeyPress={(e) => e.key === 'Enter' && handleAddGoal()}
+                    onKeyPress={(e) => e.key === 'Enter' && !loading && handleAddGoal()}
+                    disabled={loading}
                   />
                   
                   <div className="flex flex-wrap gap-2">
@@ -344,7 +337,8 @@ const ProgressOverview: React.FC = () => {
                       <button
                         key={index}
                         onClick={() => setNewGoal(suggestion)}
-                        className={`text-xs px-2 py-1 rounded transition-colors ${
+                        disabled={loading}
+                        className={`text-xs px-2 py-1 rounded transition-colors disabled:opacity-50 ${
                           isDark 
                             ? 'bg-indigo-900/30 text-indigo-300 hover:bg-indigo-900/50' 
                             : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'

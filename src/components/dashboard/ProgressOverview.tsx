@@ -1,14 +1,34 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { Trophy, Target, Flame, Clock, CheckCircle, BookOpen, TrendingUp, Sparkles, Star, Zap, Plus, X, Save } from 'lucide-react';
+import { Trophy, Target, Flame, Clock, CheckCircle, BookOpen, TrendingUp, Sparkles, Star, Zap, Plus, X, Save, Calendar, Play } from 'lucide-react';
 import WhatsNext from './WhatsNext';
 
 const ProgressOverview: React.FC = () => {
-  const { currentUser, userProfile, userProgress = [], weeklyStats, weeklyPlan, addGoal, removeGoal } = useAuth();
+  const { 
+    currentUser, 
+    userProfile, 
+    userProgress = [], 
+    weeklyStats, 
+    learningGoals,
+    availableTopics,
+    addGoal, 
+    updateGoal,
+    deleteGoal,
+    completeGoal,
+    completeTopic
+  } = useAuth();
   const { isDark } = useTheme();
   const [showAddGoal, setShowAddGoal] = useState(false);
-  const [newGoal, setNewGoal] = useState('');
+  const [showTopics, setShowTopics] = useState(false);
+  const [showTopicModal, setShowTopicModal] = useState(false);
+  const [selectedTopic, setSelectedTopic] = useState<any>(null);
+  const [newGoal, setNewGoal] = useState({
+    title: '',
+    description: '',
+    targetDate: '',
+    relatedTopics: [] as string[]
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -20,10 +40,9 @@ const ProgressOverview: React.FC = () => {
   const totalStudyTime = weeklyStats?.totalTimeSpent || 0;
   const averageScore = weeklyStats?.averageScore || 0;
 
-  // Weekly goal progress
-  const weeklyGoal = userProfile?.learningGoals?.length || 5;
-  const weeklyProgress = Math.min(completedThisWeek, weeklyGoal);
-  const weeklyPercentage = weeklyGoal > 0 ? Math.round((weeklyProgress / weeklyGoal) * 100) : 0;
+  // Learning goals progress
+  const activeGoals = learningGoals.filter(goal => !goal.isCompleted);
+  const completedGoals = learningGoals.filter(goal => goal.isCompleted);
 
   // Clear messages after 3 seconds
   React.useEffect(() => {
@@ -37,8 +56,8 @@ const ProgressOverview: React.FC = () => {
   }, [error, success]);
 
   const handleAddGoal = async () => {
-    if (!currentUser || !newGoal.trim()) {
-      setError('Please enter a goal');
+    if (!currentUser || !newGoal.title.trim()) {
+      setError('Please enter a goal title');
       return;
     }
 
@@ -46,8 +65,21 @@ const ProgressOverview: React.FC = () => {
     setError(null);
 
     try {
-      await addGoal(newGoal.trim());
-      setNewGoal('');
+      await addGoal({
+        title: newGoal.title.trim(),
+        description: newGoal.description.trim(),
+        targetDate: newGoal.targetDate ? new Date(newGoal.targetDate) : undefined,
+        isCompleted: false,
+        progress: 0,
+        relatedTopics: newGoal.relatedTopics
+      });
+      
+      setNewGoal({
+        title: '',
+        description: '',
+        targetDate: '',
+        relatedTopics: []
+      });
       setShowAddGoal(false);
       setSuccess('Goal added successfully!');
     } catch (error) {
@@ -58,19 +90,50 @@ const ProgressOverview: React.FC = () => {
     }
   };
 
-  const handleRemoveGoal = async (goal: string) => {
+  const handleCompleteGoal = async (goalId: string) => {
     if (!currentUser) return;
 
-    if (!confirm('Are you sure you want to remove this goal?')) {
+    try {
+      await completeGoal(goalId);
+      setSuccess('Goal completed! 🎉');
+    } catch (error) {
+      console.error('Error completing goal:', error);
+      setError('Failed to complete goal. Please try again.');
+    }
+  };
+
+  const handleDeleteGoal = async (goalId: string) => {
+    if (!currentUser) return;
+
+    if (!confirm('Are you sure you want to delete this goal?')) {
       return;
     }
 
     try {
-      await removeGoal(goal);
-      setSuccess('Goal removed successfully!');
+      await deleteGoal(goalId);
+      setSuccess('Goal deleted successfully!');
     } catch (error) {
-      console.error('Error removing goal:', error);
-      setError('Failed to remove goal. Please try again.');
+      console.error('Error deleting goal:', error);
+      setError('Failed to delete goal. Please try again.');
+    }
+  };
+
+  const handleStartTopic = (topic: any) => {
+    setSelectedTopic(topic);
+    setShowTopicModal(true);
+  };
+
+  const handleCompleteTopic = async (score: number, timeSpent: number) => {
+    if (!selectedTopic || !currentUser) return;
+
+    try {
+      await completeTopic(selectedTopic.id, score, timeSpent);
+      setShowTopicModal(false);
+      setSelectedTopic(null);
+      setSuccess(`Topic "${selectedTopic.name}" completed with ${score}% score! 🎉`);
+    } catch (error) {
+      console.error('Error completing topic:', error);
+      setError('Failed to complete topic. Please try again.');
     }
   };
 
@@ -84,9 +147,9 @@ const ProgressOverview: React.FC = () => {
       gradient: 'from-emerald-500 to-teal-500'
     },
     {
-      label: 'Weekly Goal',
-      value: `${weeklyProgress}/${weeklyGoal}`,
-      percentage: weeklyPercentage,
+      label: 'Active Goals',
+      value: activeGoals.length.toString(),
+      percentage: activeGoals.length > 0 ? Math.min(activeGoals.reduce((acc, goal) => acc + goal.progress, 0) / activeGoals.length, 100) : 0,
       icon: Target,
       color: 'indigo',
       gradient: 'from-indigo-500 to-purple-500'
@@ -137,6 +200,9 @@ const ProgressOverview: React.FC = () => {
     'Build a portfolio project',
     'Master CSS Grid and Flexbox'
   ];
+
+  const availableTopicsToShow = availableTopics.filter(topic => !topic.isCompleted);
+  const completedTopics = availableTopics.filter(topic => topic.isCompleted);
 
   return (
     <div className={`space-y-8 transition-colors ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
@@ -221,50 +287,117 @@ const ProgressOverview: React.FC = () => {
           isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
         }`}>
           <div className="p-6">
-            <div className="flex items-center mb-6">
-              <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center mr-4 shadow-lg">
-                <Trophy className="w-6 h-6 text-white" />
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center mr-4 shadow-lg">
+                  <Trophy className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className={`text-xl font-bold transition-colors ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
+                    Learning Goals
+                  </h2>
+                  <p className={`text-sm transition-colors ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                    {activeGoals.length} active • {completedGoals.length} completed
+                  </p>
+                </div>
               </div>
-              <div>
-                <h2 className={`text-xl font-bold transition-colors ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
-                  Learning Goals
-                </h2>
-                <p className={`text-sm transition-colors ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                  Track your progress towards mastery
-                </p>
-              </div>
+              <button 
+                onClick={() => setShowAddGoal(true)}
+                className="btn-primary"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Goal
+              </button>
             </div>
             
-            <div className="space-y-4">
-              {userProfile?.learningGoals?.length ? (
-                userProfile.learningGoals.map((goal, index) => (
-                  <div key={index} className="group">
-                    <div className={`flex items-center p-4 rounded-xl transition-all duration-300 border hover:shadow-sm ${
-                      isDark 
-                        ? 'bg-gradient-to-r from-gray-700 to-indigo-900/20 hover:from-indigo-900/30 hover:to-purple-900/20 border-gray-600 hover:border-indigo-500/50' 
-                        : 'bg-gradient-to-r from-gray-50 to-indigo-50 hover:from-indigo-50 hover:to-purple-50 border-gray-100 hover:border-indigo-200'
+            <div className="space-y-4 max-h-80 overflow-y-auto">
+              {learningGoals.length ? (
+                learningGoals.map((goal) => (
+                  <div key={goal.id} className="group">
+                    <div className={`p-4 rounded-xl transition-all duration-300 border ${
+                      goal.isCompleted
+                        ? isDark 
+                          ? 'bg-emerald-900/20 border-emerald-700/50' 
+                          : 'bg-emerald-50 border-emerald-200'
+                        : isDark 
+                          ? 'bg-gray-700 border-gray-600 hover:border-indigo-500/50' 
+                          : 'bg-gray-50 border-gray-200 hover:border-indigo-200'
                     }`}>
-                      <div className="w-4 h-4 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full mr-4 shadow-sm"></div>
-                      <span className={`flex-1 font-medium transition-colors ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
-                        {goal}
-                      </span>
-                      <div className="flex items-center space-x-2">
-                        <div className={`text-sm font-medium transition-colors ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                          {Math.floor(Math.random() * 80 + 20)}%
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <h4 className={`font-semibold mb-1 ${
+                            goal.isCompleted 
+                              ? isDark ? 'text-emerald-300 line-through' : 'text-emerald-700 line-through'
+                              : isDark ? 'text-gray-100' : 'text-gray-900'
+                          }`}>
+                            {goal.title}
+                          </h4>
+                          {goal.description && (
+                            <p className={`text-sm ${
+                              isDark ? 'text-gray-400' : 'text-gray-600'
+                            }`}>
+                              {goal.description}
+                            </p>
+                          )}
+                          {goal.targetDate && (
+                            <div className={`flex items-center text-xs mt-2 ${
+                              isDark ? 'text-gray-500' : 'text-gray-500'
+                            }`}>
+                              <Calendar className="w-3 h-3 mr-1" />
+                              Target: {goal.targetDate.toLocaleDateString()}
+                            </div>
+                          )}
                         </div>
-                        <Sparkles className="w-4 h-4 text-indigo-500" />
-                        <button
-                          onClick={() => handleRemoveGoal(goal)}
-                          className={`opacity-0 group-hover:opacity-100 p-1 rounded transition-all ${
-                            isDark 
-                              ? 'text-gray-400 hover:text-red-400 hover:bg-gray-600' 
-                              : 'text-gray-400 hover:text-red-600 hover:bg-gray-100'
-                          }`}
-                          title="Remove goal"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
+                        <div className="flex items-center space-x-2 ml-4">
+                          {!goal.isCompleted && (
+                            <button
+                              onClick={() => handleCompleteGoal(goal.id)}
+                              className={`p-1 rounded transition-colors ${
+                                isDark 
+                                  ? 'text-gray-400 hover:text-emerald-400 hover:bg-gray-600' 
+                                  : 'text-gray-400 hover:text-emerald-600 hover:bg-gray-100'
+                              }`}
+                              title="Mark as completed"
+                            >
+                              <CheckCircle className="w-4 h-4" />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleDeleteGoal(goal.id)}
+                            className={`opacity-0 group-hover:opacity-100 p-1 rounded transition-all ${
+                              isDark 
+                                ? 'text-gray-400 hover:text-red-400 hover:bg-gray-600' 
+                                : 'text-gray-400 hover:text-red-600 hover:bg-gray-100'
+                            }`}
+                            title="Delete goal"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
+                      
+                      {!goal.isCompleted && (
+                        <div className="space-y-2">
+                          <div className={`w-full rounded-full h-2 transition-colors ${
+                            isDark ? 'bg-gray-600' : 'bg-gray-200'
+                          }`}>
+                            <div 
+                              className="bg-indigo-500 h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${goal.progress}%` }}
+                            ></div>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <span className={`transition-colors ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                              {goal.progress}% complete
+                            </span>
+                            {goal.isCompleted && (
+                              <span className="text-emerald-600 font-medium">
+                                ✓ Completed {goal.completedAt?.toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))
@@ -315,15 +448,39 @@ const ProgressOverview: React.FC = () => {
                 <div className="space-y-3">
                   <input
                     type="text"
-                    value={newGoal}
-                    onChange={(e) => setNewGoal(e.target.value)}
-                    placeholder="Enter your learning goal..."
+                    value={newGoal.title}
+                    onChange={(e) => setNewGoal({ ...newGoal, title: e.target.value })}
+                    placeholder="Goal title (required)"
                     className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors ${
                       isDark 
                         ? 'bg-gray-800 border-gray-600 text-gray-100 placeholder-gray-400' 
                         : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
                     }`}
-                    onKeyPress={(e) => e.key === 'Enter' && !loading && handleAddGoal()}
+                    disabled={loading}
+                  />
+                  
+                  <textarea
+                    value={newGoal.description}
+                    onChange={(e) => setNewGoal({ ...newGoal, description: e.target.value })}
+                    placeholder="Description (optional)"
+                    rows={2}
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors ${
+                      isDark 
+                        ? 'bg-gray-800 border-gray-600 text-gray-100 placeholder-gray-400' 
+                        : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
+                    }`}
+                    disabled={loading}
+                  />
+                  
+                  <input
+                    type="date"
+                    value={newGoal.targetDate}
+                    onChange={(e) => setNewGoal({ ...newGoal, targetDate: e.target.value })}
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors ${
+                      isDark 
+                        ? 'bg-gray-800 border-gray-600 text-gray-100' 
+                        : 'bg-white border-gray-300 text-gray-900'
+                    }`}
                     disabled={loading}
                   />
                   
@@ -336,7 +493,7 @@ const ProgressOverview: React.FC = () => {
                     {goalSuggestions.slice(0, 3).map((suggestion, index) => (
                       <button
                         key={index}
-                        onClick={() => setNewGoal(suggestion)}
+                        onClick={() => setNewGoal({ ...newGoal, title: suggestion })}
                         disabled={loading}
                         className={`text-xs px-2 py-1 rounded transition-colors disabled:opacity-50 ${
                           isDark 
@@ -363,7 +520,7 @@ const ProgressOverview: React.FC = () => {
                     </button>
                     <button
                       onClick={handleAddGoal}
-                      disabled={loading || !newGoal.trim()}
+                      disabled={loading || !newGoal.title.trim()}
                       className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
                     >
                       {loading ? (
@@ -382,79 +539,103 @@ const ProgressOverview: React.FC = () => {
                 </div>
               </div>
             )}
-            
-            {userProfile?.learningGoals?.length > 0 && !showAddGoal && (
-              <button 
-                onClick={() => setShowAddGoal(true)}
-                className="w-full mt-6 btn-secondary"
-              >
-                <Target className="w-4 h-4 mr-2" />
-                Add New Goal
-              </button>
-            )}
           </div>
         </div>
 
-        {/* Recent Activity */}
+        {/* Available Topics */}
         <div className={`card transition-colors ${
           isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
         }`}>
           <div className="p-6">
-            <div className="flex items-center mb-6">
-              <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center mr-4 shadow-lg">
-                <BookOpen className="w-6 h-6 text-white" />
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center mr-4 shadow-lg">
+                  <BookOpen className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className={`text-xl font-bold transition-colors ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
+                    Available Topics
+                  </h2>
+                  <p className={`text-sm transition-colors ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                    {availableTopicsToShow.length} available • {completedTopics.length} completed
+                  </p>
+                </div>
               </div>
-              <div>
-                <h2 className={`text-xl font-bold transition-colors ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
-                  Recent Activity
-                </h2>
-                <p className={`text-sm transition-colors ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                  Your latest learning achievements
-                </p>
-              </div>
+              <button 
+                onClick={() => setShowTopics(!showTopics)}
+                className="btn-secondary"
+              >
+                {showTopics ? 'Hide' : 'View All'}
+              </button>
             </div>
             
-            <div className="space-y-4">
-              {recentActivities.length ? (
-                recentActivities.map((activity, index) => (
-                  <div key={index} className="group">
-                    <div className={`flex items-start space-x-4 p-4 rounded-xl transition-all duration-200 ${
-                      isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-50'
-                    }`}>
-                      <div className="w-3 h-3 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 mt-2 shadow-sm"></div>
+            <div className="space-y-3 max-h-80 overflow-y-auto">
+              {availableTopicsToShow.length ? (
+                availableTopicsToShow.slice(0, showTopics ? undefined : 5).map((topic) => (
+                  <div key={topic.id} className={`p-4 rounded-lg border transition-all hover:shadow-sm ${
+                    isDark 
+                      ? 'bg-gray-700 border-gray-600 hover:border-emerald-500/50' 
+                      : 'bg-gray-50 border-gray-200 hover:border-emerald-200'
+                  }`}>
+                    <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <p className={`font-medium transition-colors ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
-                          {activity.title}
+                        <div className="flex items-center space-x-2 mb-2">
+                          <h4 className={`font-semibold transition-colors ${
+                            isDark ? 'text-gray-100' : 'text-gray-900'
+                          }`}>
+                            {topic.name}
+                          </h4>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            topic.difficulty === 'beginner' 
+                              ? isDark ? 'bg-emerald-900/30 text-emerald-300' : 'bg-emerald-100 text-emerald-700'
+                              : topic.difficulty === 'intermediate'
+                              ? isDark ? 'bg-orange-900/30 text-orange-300' : 'bg-orange-100 text-orange-700'
+                              : isDark ? 'bg-red-900/30 text-red-300' : 'bg-red-100 text-red-700'
+                          }`}>
+                            {topic.difficulty}
+                          </span>
+                        </div>
+                        <p className={`text-sm mb-3 transition-colors ${
+                          isDark ? 'text-gray-400' : 'text-gray-600'
+                        }`}>
+                          {topic.description}
                         </p>
-                        <div className="flex items-center space-x-3 mt-2">
-                          <p className={`text-sm transition-colors ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                            {activity.time}
-                          </p>
-                          {activity.score && (
-                            <span className="badge badge-success">
-                              <Star className="w-3 h-3 mr-1" />
-                              {activity.score}% score
-                            </span>
-                          )}
+                        <div className="flex items-center space-x-4 text-xs">
+                          <span className={`flex items-center transition-colors ${
+                            isDark ? 'text-gray-500' : 'text-gray-500'
+                          }`}>
+                            <Clock className="w-3 h-3 mr-1" />
+                            {topic.estimatedTime} min
+                          </span>
+                          <span className={`transition-colors ${
+                            isDark ? 'text-gray-500' : 'text-gray-500'
+                          }`}>
+                            {topic.category}
+                          </span>
                         </div>
                       </div>
+                      <button
+                        onClick={() => handleStartTopic(topic)}
+                        className="flex items-center px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium ml-4"
+                      >
+                        <Play className="w-4 h-4 mr-1" />
+                        Start
+                      </button>
                     </div>
                   </div>
                 ))
               ) : (
                 <div className="text-center py-8">
-                  <BookOpen className={`w-12 h-12 mx-auto mb-4 transition-colors ${
-                    isDark ? 'text-gray-600' : 'text-gray-300'
-                  }`} />
+                  <CheckCircle className={`w-12 h-12 mx-auto mb-4 text-emerald-500`} />
                   <p className={`mb-2 transition-colors ${
                     isDark ? 'text-gray-400' : 'text-gray-500'
                   }`}>
-                    No recent activity
+                    All topics completed!
                   </p>
                   <p className={`text-sm transition-colors ${
                     isDark ? 'text-gray-500' : 'text-gray-400'
                   }`}>
-                    Complete your first topic to see activity here
+                    Great job! More topics will be added soon.
                   </p>
                 </div>
               )}
@@ -462,6 +643,90 @@ const ProgressOverview: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Topic Completion Modal */}
+      {showTopicModal && selectedTopic && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className={`rounded-xl shadow-xl max-w-md w-full transition-colors ${
+            isDark ? 'bg-gray-800' : 'bg-white'
+          }`}>
+            <div className="p-6">
+              <h3 className={`text-xl font-bold mb-4 transition-colors ${
+                isDark ? 'text-gray-100' : 'text-gray-900'
+              }`}>
+                Complete Topic: {selectedTopic.name}
+              </h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className={`block text-sm font-medium mb-2 transition-colors ${
+                    isDark ? 'text-gray-300' : 'text-gray-700'
+                  }`}>
+                    Score (0-100%)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    defaultValue="85"
+                    id="score-input"
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors ${
+                      isDark 
+                        ? 'bg-gray-700 border-gray-600 text-gray-100' 
+                        : 'bg-white border-gray-300 text-gray-900'
+                    }`}
+                  />
+                </div>
+                
+                <div>
+                  <label className={`block text-sm font-medium mb-2 transition-colors ${
+                    isDark ? 'text-gray-300' : 'text-gray-700'
+                  }`}>
+                    Time Spent (minutes)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    defaultValue={selectedTopic.estimatedTime}
+                    id="time-input"
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors ${
+                      isDark 
+                        ? 'bg-gray-700 border-gray-600 text-gray-100' 
+                        : 'bg-white border-gray-300 text-gray-900'
+                    }`}
+                  />
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  onClick={() => {
+                    setShowTopicModal(false);
+                    setSelectedTopic(null);
+                  }}
+                  className={`px-4 py-2 font-medium transition-colors ${
+                    isDark 
+                      ? 'text-gray-300 hover:text-gray-100' 
+                      : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    const score = parseInt((document.getElementById('score-input') as HTMLInputElement).value) || 85;
+                    const timeSpent = parseInt((document.getElementById('time-input') as HTMLInputElement).value) || selectedTopic.estimatedTime;
+                    handleCompleteTopic(score, timeSpent);
+                  }}
+                  className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium transition-colors"
+                >
+                  Complete Topic
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* AI Recommendations Section */}
       <WhatsNext />

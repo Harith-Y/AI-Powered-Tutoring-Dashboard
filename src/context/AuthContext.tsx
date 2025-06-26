@@ -8,7 +8,7 @@ import {
   updateProfile
 } from 'firebase/auth';
 import { auth } from '../firebase/config';
-import { User, UserPreferences, Progress, WeeklyPlanItem } from '../types';
+import { User, UserPreferences, Progress, WeeklyPlanItem, Topic, LearningGoal } from '../types';
 import { 
   createUserProfile, 
   getUserProfile, 
@@ -19,8 +19,11 @@ import {
   subscribeToWeeklyPlan,
   getWeeklyStats,
   addLearningGoal,
-  removeLearningGoal,
-  updateLearningGoals
+  updateLearningGoal,
+  deleteLearningGoal,
+  subscribeToLearningGoals,
+  getTopicsWithProgress,
+  addProgress
 } from '../services/firestore';
 import { onSnapshot, doc } from 'firebase/firestore';
 import { db } from '../firebase/config';
@@ -32,13 +35,17 @@ interface AuthContextType {
   userProgress: Progress[];
   weeklyPlan: WeeklyPlanItem[];
   weeklyStats: any;
+  learningGoals: LearningGoal[];
+  availableTopics: Topic[];
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, displayName: string) => Promise<void>;
   logout: () => Promise<void>;
   updatePreferences: (preferences: UserPreferences) => Promise<void>;
-  addGoal: (goal: string) => Promise<void>;
-  removeGoal: (goal: string) => Promise<void>;
-  updateGoals: (goals: string[]) => Promise<void>;
+  addGoal: (goal: Omit<LearningGoal, 'id' | 'createdAt'>) => Promise<void>;
+  updateGoal: (goalId: string, updates: Partial<LearningGoal>) => Promise<void>;
+  deleteGoal: (goalId: string) => Promise<void>;
+  completeGoal: (goalId: string) => Promise<void>;
+  completeTopic: (topicId: string, score: number, timeSpent: number) => Promise<void>;
   loading: boolean;
 }
 
@@ -59,6 +66,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [userProgress, setUserProgress] = useState<Progress[]>([]);
   const [weeklyPlan, setWeeklyPlan] = useState<WeeklyPlanItem[]>([]);
   const [weeklyStats, setWeeklyStats] = useState<any>(null);
+  const [learningGoals, setLearningGoals] = useState<LearningGoal[]>([]);
+  const [availableTopics, setAvailableTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
 
   const login = async (email: string, password: string) => {
@@ -82,7 +91,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: email,
         displayName: displayName,
         skillLevel: 'beginner',
-        learningGoals: ['Master React fundamentals', 'Learn TypeScript', 'Build portfolio projects'],
+        learningGoals: [],
         preferredTopics: ['JavaScript', 'React', 'CSS'],
         learningStyle: 'visual'
       };
@@ -116,6 +125,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUserProgress([]);
       setWeeklyPlan([]);
       setWeeklyStats(null);
+      setLearningGoals([]);
+      setAvailableTopics([]);
     } catch (error) {
       console.error('Logout error:', error);
       throw error;
@@ -123,7 +134,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updatePreferences = async (preferences: UserPreferences) => {
-    if (!currentUser) return;
+    if (!currentUser) throw new Error('User not authenticated');
     try {
       await updateUserPreferences(currentUser.uid, preferences);
       setUserPreferences(preferences);
@@ -134,36 +145,89 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Learning Goals CRUD Operations
-  const addGoal = async (goal: string) => {
+  const addGoal = async (goal: Omit<LearningGoal, 'id' | 'createdAt'>) => {
     if (!currentUser) throw new Error('User not authenticated');
     try {
-      await addLearningGoal(currentUser.uid, goal);
-      // The real-time listener will update the state automatically
+      const goalWithDefaults: LearningGoal = {
+        id: '', // Will be set by Firestore
+        ...goal,
+        createdAt: new Date(),
+        progress: 0,
+        isCompleted: false,
+        relatedTopics: goal.relatedTopics || []
+      };
+      await addLearningGoal(currentUser.uid, goalWithDefaults);
     } catch (error) {
       console.error('Add goal error:', error);
       throw error;
     }
   };
 
-  const removeGoal = async (goal: string) => {
+  const updateGoal = async (goalId: string, updates: Partial<LearningGoal>) => {
     if (!currentUser) throw new Error('User not authenticated');
     try {
-      await removeLearningGoal(currentUser.uid, goal);
-      // The real-time listener will update the state automatically
+      await updateLearningGoal(currentUser.uid, goalId, updates);
     } catch (error) {
-      console.error('Remove goal error:', error);
+      console.error('Update goal error:', error);
       throw error;
     }
   };
 
-  const updateGoals = async (goals: string[]) => {
+  const deleteGoal = async (goalId: string) => {
     if (!currentUser) throw new Error('User not authenticated');
     try {
-      await updateLearningGoals(currentUser.uid, goals);
-      // The real-time listener will update the state automatically
+      await deleteLearningGoal(currentUser.uid, goalId);
     } catch (error) {
-      console.error('Update goals error:', error);
+      console.error('Delete goal error:', error);
       throw error;
+    }
+  };
+
+  const completeGoal = async (goalId: string) => {
+    if (!currentUser) throw new Error('User not authenticated');
+    try {
+      await updateLearningGoal(currentUser.uid, goalId, {
+        isCompleted: true,
+        completedAt: new Date(),
+        progress: 100
+      });
+    } catch (error) {
+      console.error('Complete goal error:', error);
+      throw error;
+    }
+  };
+
+  // Topic Completion
+  const completeTopic = async (topicId: string, score: number, timeSpent: number) => {
+    if (!currentUser) throw new Error('User not authenticated');
+    try {
+      const topic = availableTopics.find(t => t.id === topicId);
+      if (!topic) throw new Error('Topic not found');
+
+      await addProgress(currentUser.uid, {
+        topicId: topic.id,
+        topicName: topic.name,
+        score,
+        timeSpent,
+        difficulty: topic.difficulty,
+        category: topic.category
+      });
+
+      // Update topics with new completion status
+      await loadTopics();
+    } catch (error) {
+      console.error('Complete topic error:', error);
+      throw error;
+    }
+  };
+
+  const loadTopics = async () => {
+    if (!currentUser) return;
+    try {
+      const topics = await getTopicsWithProgress(currentUser.uid);
+      setAvailableTopics(topics);
+    } catch (error) {
+      console.error('Error loading topics:', error);
     }
   };
 
@@ -179,16 +243,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const stats = await getWeeklyStats(user.uid);
       setWeeklyStats(stats);
 
+      // Load topics with progress
+      await loadTopics();
+
       // Set up real-time listeners
       const unsubscribeProgress = subscribeToProgress(user.uid, (progress) => {
         setUserProgress(progress);
+        // Reload topics when progress changes to update completion status
+        loadTopics();
       });
 
       const unsubscribeWeeklyPlan = subscribeToWeeklyPlan(user.uid, (plan) => {
         setWeeklyPlan(plan);
       });
 
-      // Set up real-time listener for user profile (including learning goals)
+      const unsubscribeLearningGoals = subscribeToLearningGoals(user.uid, (goals) => {
+        setLearningGoals(goals);
+      });
+
+      // Set up real-time listener for user profile
       const userRef = doc(db, 'users', user.uid);
       const unsubscribeProfile = onSnapshot(userRef, (doc) => {
         if (doc.exists()) {
@@ -207,6 +280,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return () => {
         unsubscribeProgress();
         unsubscribeWeeklyPlan();
+        unsubscribeLearningGoals();
         unsubscribeProfile();
       };
     } catch (error) {
@@ -235,6 +309,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUserProgress([]);
           setWeeklyPlan([]);
           setWeeklyStats(null);
+          setLearningGoals([]);
+          setAvailableTopics([]);
           
           if (unsubscribeData) {
             unsubscribeData();
@@ -263,13 +339,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     userProgress,
     weeklyPlan,
     weeklyStats,
+    learningGoals,
+    availableTopics,
     login,
     signup,
     logout,
     updatePreferences,
     addGoal,
-    removeGoal,
-    updateGoals,
+    updateGoal,
+    deleteGoal,
+    completeGoal,
+    completeTopic,
     loading
   };
 

@@ -30,6 +30,32 @@ export interface Progress {
   category: string;
 }
 
+export interface Topic {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  difficulty: 'beginner' | 'intermediate' | 'advanced';
+  estimatedTime: number; // in minutes
+  prerequisites: string[];
+  skills: string[];
+  isCompleted?: boolean;
+  completedAt?: Date;
+  score?: number;
+}
+
+export interface LearningGoal {
+  id: string;
+  title: string;
+  description?: string;
+  targetDate?: Date;
+  isCompleted: boolean;
+  completedAt?: Date;
+  progress: number; // 0-100
+  relatedTopics: string[];
+  createdAt: Date;
+}
+
 export interface WeeklyPlanItem {
   id: string;
   day: string; // 'monday', 'tuesday', etc.

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { Brain, Clock, Star, Plus, CheckCircle, Lightbulb, TrendingUp, Target, AlertCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Brain, Clock, Star, Plus, CheckCircle, Lightbulb, TrendingUp, Target, AlertCircle, Calendar, ArrowRight, Eye } from 'lucide-react';
 import { addWeeklyPlanItem } from '../../services/firestore';
 import { mistralService } from '../../services/mistralService';
 
@@ -16,14 +17,26 @@ interface TopicRecommendation {
   prerequisites: string[];
 }
 
+interface AcceptedRecommendation {
+  id: string;
+  topicName: string;
+  day: string;
+  estimatedTime: number;
+  acceptedAt: Date;
+}
+
 const WhatsNext: React.FC = () => {
   const { currentUser, userProfile, userProgress = [] } = useAuth();
   const { isDark } = useTheme();
+  const navigate = useNavigate();
   const [recommendations, setRecommendations] = useState<TopicRecommendation[]>([]);
   const [loading, setLoading] = useState(false);
   const [acceptedRecommendations, setAcceptedRecommendations] = useState<Set<string>>(new Set());
+  const [recentlyAccepted, setRecentlyAccepted] = useState<AcceptedRecommendation[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [lastFetchTime, setLastFetchTime] = useState<number>(0);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [currentAcceptedItem, setCurrentAcceptedItem] = useState<AcceptedRecommendation | null>(null);
 
   const fetchRecommendations = async () => {
     if (!currentUser || !userProfile) return;
@@ -256,9 +269,11 @@ const WhatsNext: React.FC = () => {
     if (!currentUser) return;
 
     try {
+      const nextDay = getNextAvailableDay();
+      
       // Add to weekly plan
       await addWeeklyPlanItem(currentUser.uid, {
-        day: getNextAvailableDay(),
+        day: nextDay,
         topic: recommendation.topicName,
         description: recommendation.reasoning,
         estimatedTime: recommendation.estimatedTime,
@@ -270,6 +285,20 @@ const WhatsNext: React.FC = () => {
 
       // Mark as accepted
       setAcceptedRecommendations(prev => new Set([...prev, recommendation.topicId]));
+      
+      // Create accepted item for display
+      const acceptedItem: AcceptedRecommendation = {
+        id: recommendation.topicId,
+        topicName: recommendation.topicName,
+        day: nextDay,
+        estimatedTime: recommendation.estimatedTime,
+        acceptedAt: new Date()
+      };
+
+      // Add to recently accepted list
+      setRecentlyAccepted(prev => [acceptedItem, ...prev.slice(0, 4)]); // Keep last 5
+      setCurrentAcceptedItem(acceptedItem);
+      setShowSuccessModal(true);
       
       console.log(`Added "${recommendation.topicName}" to weekly plan`);
       
@@ -311,6 +340,21 @@ const WhatsNext: React.FC = () => {
     return isDark ? 'text-gray-400' : 'text-gray-600';
   };
 
+  const formatDayName = (day: string) => {
+    return day.charAt(0).toUpperCase() + day.slice(1);
+  };
+
+  // Auto-close success modal after 5 seconds
+  useEffect(() => {
+    if (showSuccessModal) {
+      const timer = setTimeout(() => {
+        setShowSuccessModal(false);
+        setCurrentAcceptedItem(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [showSuccessModal]);
+
   return (
     <div className={`rounded-xl shadow-sm border p-6 transition-colors ${
       isDark 
@@ -349,6 +393,77 @@ const WhatsNext: React.FC = () => {
           {loading ? 'Analyzing...' : 'Refresh'}
         </button>
       </div>
+
+      {/* Recently Accepted Items */}
+      {recentlyAccepted.length > 0 && (
+        <div className={`mb-6 p-4 rounded-lg border transition-colors ${
+          isDark 
+            ? 'bg-emerald-900/20 border-emerald-700/50' 
+            : 'bg-emerald-50 border-emerald-200'
+        }`}>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className={`font-semibold flex items-center transition-colors ${
+              isDark ? 'text-emerald-300' : 'text-emerald-800'
+            }`}>
+              <CheckCircle className="w-5 h-5 mr-2" />
+              Recently Added to Schedule
+            </h3>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => navigate('/schedule')}
+                className={`flex items-center px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                  isDark 
+                    ? 'bg-emerald-800/50 text-emerald-300 hover:bg-emerald-800' 
+                    : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                }`}
+              >
+                <Calendar className="w-4 h-4 mr-1" />
+                View Schedule
+              </button>
+              <button
+                onClick={() => navigate('/planner')}
+                className={`flex items-center px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                  isDark 
+                    ? 'bg-indigo-800/50 text-indigo-300 hover:bg-indigo-800' 
+                    : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
+                }`}
+              >
+                <Brain className="w-4 h-4 mr-1" />
+                AI Planner
+              </button>
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            {recentlyAccepted.slice(0, 3).map((item) => (
+              <div key={item.id} className={`flex items-center justify-between p-3 rounded-lg transition-colors ${
+                isDark ? 'bg-emerald-900/30' : 'bg-emerald-100'
+              }`}>
+                <div className="flex items-center space-x-3">
+                  <div className={`w-2 h-2 rounded-full bg-emerald-500`}></div>
+                  <div>
+                    <p className={`font-medium text-sm transition-colors ${
+                      isDark ? 'text-emerald-200' : 'text-emerald-800'
+                    }`}>
+                      {item.topicName}
+                    </p>
+                    <p className={`text-xs transition-colors ${
+                      isDark ? 'text-emerald-400' : 'text-emerald-600'
+                    }`}>
+                      Scheduled for {formatDayName(item.day)} • {item.estimatedTime} min
+                    </p>
+                  </div>
+                </div>
+                <div className={`text-xs transition-colors ${
+                  isDark ? 'text-emerald-400' : 'text-emerald-600'
+                }`}>
+                  {item.acceptedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className={`mb-6 p-4 border rounded-lg transition-colors ${
@@ -499,9 +614,18 @@ const WhatsNext: React.FC = () => {
                   </div>
                   
                   {isAccepted ? (
-                    <div className="flex items-center text-emerald-600 font-medium text-sm">
-                      <CheckCircle className="w-4 h-4 mr-2" />
-                      Added to Plan
+                    <div className="flex items-center space-x-3">
+                      <div className="flex items-center text-emerald-600 font-medium text-sm">
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Added to Plan
+                      </div>
+                      <button
+                        onClick={() => navigate('/schedule')}
+                        className="flex items-center px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium text-sm"
+                      >
+                        <Eye className="w-4 h-4 mr-2" />
+                        View Schedule
+                      </button>
                     </div>
                   ) : (
                     <button
@@ -556,9 +680,77 @@ const WhatsNext: React.FC = () => {
           isDark ? 'text-purple-400' : 'text-purple-700'
         }`}>
           Our smart recommendation system analyzes your learning history, skill level, and preferences to suggest relevant next topics. 
-          Rate limiting is in place to prevent API overuse while ensuring you always get quality recommendations.
+          Accepted recommendations are automatically added to your weekly schedule and can be viewed in the Schedule or AI Planner sections.
         </p>
       </div>
+
+      {/* Success Modal */}
+      {showSuccessModal && currentAcceptedItem && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className={`rounded-xl shadow-xl max-w-md w-full transition-colors ${
+            isDark ? 'bg-gray-800' : 'bg-white'
+          }`}>
+            <div className="p-6 text-center">
+              <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="w-8 h-8 text-emerald-600" />
+              </div>
+              
+              <h3 className={`text-xl font-bold mb-2 transition-colors ${
+                isDark ? 'text-gray-100' : 'text-gray-900'
+              }`}>
+                Recommendation Added! 🎉
+              </h3>
+              
+              <p className={`mb-4 transition-colors ${
+                isDark ? 'text-gray-300' : 'text-gray-600'
+              }`}>
+                <strong>"{currentAcceptedItem.topicName}"</strong> has been added to your weekly schedule for {formatDayName(currentAcceptedItem.day)}.
+              </p>
+              
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={() => {
+                    setShowSuccessModal(false);
+                    navigate('/schedule');
+                  }}
+                  className="flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+                >
+                  <Calendar className="w-4 h-4 mr-2" />
+                  View Schedule
+                </button>
+                
+                <button
+                  onClick={() => {
+                    setShowSuccessModal(false);
+                    navigate('/planner');
+                  }}
+                  className="flex items-center justify-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium"
+                >
+                  <Brain className="w-4 h-4 mr-2" />
+                  AI Planner
+                </button>
+                
+                <button
+                  onClick={() => setShowSuccessModal(false)}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    isDark 
+                      ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Continue
+                </button>
+              </div>
+              
+              <p className={`text-xs mt-4 transition-colors ${
+                isDark ? 'text-gray-500' : 'text-gray-400'
+              }`}>
+                This modal will close automatically in a few seconds
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

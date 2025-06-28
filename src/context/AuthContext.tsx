@@ -176,55 +176,63 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Learning Goals CRUD Operations
+  // Learning Goals CRUD Operations - Fixed
   const addGoal = async (goal: Omit<LearningGoal, 'id' | 'createdAt'>) => {
     if (!currentUser) throw new Error('User not authenticated');
+    
+    console.log('AuthContext: addGoal called with:', goal);
+    
     try {
-      const goalWithDefaults: LearningGoal = {
-        id: '', // Will be set by Firestore
-        ...goal,
-        createdAt: new Date(),
-        progress: 0,
-        isCompleted: false,
-        relatedTopics: goal.relatedTopics || []
-      };
-      await addLearningGoal(currentUser.uid, goalWithDefaults);
+      const goalId = await addLearningGoal(currentUser.uid, goal);
+      console.log('AuthContext: Goal added successfully with ID:', goalId);
     } catch (error) {
-      console.error('Add goal error:', error);
+      console.error('AuthContext: Add goal error:', error);
       throw error;
     }
   };
 
   const updateGoal = async (goalId: string, updates: Partial<LearningGoal>) => {
     if (!currentUser) throw new Error('User not authenticated');
+    
+    console.log('AuthContext: updateGoal called with:', goalId, updates);
+    
     try {
       await updateLearningGoal(currentUser.uid, goalId, updates);
+      console.log('AuthContext: Goal updated successfully');
     } catch (error) {
-      console.error('Update goal error:', error);
+      console.error('AuthContext: Update goal error:', error);
       throw error;
     }
   };
 
   const deleteGoal = async (goalId: string) => {
     if (!currentUser) throw new Error('User not authenticated');
+    
+    console.log('AuthContext: deleteGoal called with:', goalId);
+    
     try {
       await deleteLearningGoal(currentUser.uid, goalId);
+      console.log('AuthContext: Goal deleted successfully');
     } catch (error) {
-      console.error('Delete goal error:', error);
+      console.error('AuthContext: Delete goal error:', error);
       throw error;
     }
   };
 
   const completeGoal = async (goalId: string) => {
     if (!currentUser) throw new Error('User not authenticated');
+    
+    console.log('AuthContext: completeGoal called with:', goalId);
+    
     try {
       await updateLearningGoal(currentUser.uid, goalId, {
         isCompleted: true,
         completedAt: new Date(),
         progress: 100
       });
+      console.log('AuthContext: Goal completed successfully');
     } catch (error) {
-      console.error('Complete goal error:', error);
+      console.error('AuthContext: Complete goal error:', error);
       throw error;
     }
   };
@@ -321,6 +329,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       const unsubscribeLearningGoals = subscribeToLearningGoals(user.uid, (goals) => {
+        console.log('AuthContext: Learning goals subscription update - now have', goals.length, 'goals');
         setLearningGoals(goals);
       });
 
@@ -436,6 +445,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
   }, []);
+
+  // Debug effect to log learning goals state changes
+  useEffect(() => {
+    console.log('AuthContext: learningGoals state changed:', learningGoals.length, 'goals');
+    if (learningGoals.length > 0) {
+      console.log('AuthContext: Learning goals:', learningGoals.map(g => ({ id: g.id, title: g.title, isCompleted: g.isCompleted })));
+    }
+  }, [learningGoals]);
 
   // Debug effect to log topics state changes
   useEffect(() => {

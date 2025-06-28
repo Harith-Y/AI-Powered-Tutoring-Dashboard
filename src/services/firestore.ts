@@ -52,15 +52,32 @@ export const updateUserProfile = async (uid: string, updates: Partial<User>) => 
   }, { merge: true });
 };
 
-// Learning Goals Operations (Enhanced)
-export const addLearningGoal = async (uid: string, goal: LearningGoal) => {
-  const goalsRef = collection(db, 'users', uid, 'learning_goals');
-  const docRef = await addDoc(goalsRef, {
-    ...goal,
-    createdAt: Timestamp.now(),
-    completedAt: goal.completedAt ? Timestamp.fromDate(goal.completedAt) : null
-  });
-  return docRef.id;
+// Learning Goals Operations (Enhanced and Fixed)
+export const addLearningGoal = async (uid: string, goal: Omit<LearningGoal, 'id' | 'createdAt'>): Promise<string> => {
+  console.log('Firestore: Adding learning goal for user:', uid, goal);
+  
+  try {
+    const goalsRef = collection(db, 'users', uid, 'learning_goals');
+    const goalData = {
+      title: goal.title,
+      description: goal.description || '',
+      targetDate: goal.targetDate ? Timestamp.fromDate(goal.targetDate) : null,
+      isCompleted: false,
+      progress: 0,
+      relatedTopics: goal.relatedTopics || [],
+      createdAt: Timestamp.now(),
+      completedAt: null
+    };
+    
+    console.log('Firestore: Goal data to save:', goalData);
+    
+    const docRef = await addDoc(goalsRef, goalData);
+    console.log('Firestore: Learning goal added with ID:', docRef.id);
+    return docRef.id;
+  } catch (error) {
+    console.error('Firestore: Error adding learning goal:', error);
+    throw error;
+  }
 };
 
 export const updateLearningGoal = async (uid: string, goalId: string, updates: Partial<LearningGoal>) => {
@@ -69,44 +86,98 @@ export const updateLearningGoal = async (uid: string, goalId: string, updates: P
     throw new Error('Invalid goalId: goalId must be a non-empty string');
   }
 
-  const goalRef = doc(db, 'users', uid, 'learning_goals', goalId);
-  await updateDoc(goalRef, {
-    ...updates,
-    completedAt: updates.completedAt ? Timestamp.fromDate(updates.completedAt) : null
-  });
+  console.log('Firestore: Updating learning goal:', uid, goalId, updates);
+
+  try {
+    const goalRef = doc(db, 'users', uid, 'learning_goals', goalId);
+    const updateData: any = { ...updates };
+    
+    // Convert dates to Timestamps
+    if (updates.completedAt) {
+      updateData.completedAt = Timestamp.fromDate(updates.completedAt);
+    }
+    if (updates.targetDate) {
+      updateData.targetDate = Timestamp.fromDate(updates.targetDate);
+    }
+    
+    await updateDoc(goalRef, updateData);
+    console.log('Firestore: Learning goal updated successfully');
+  } catch (error) {
+    console.error('Firestore: Error updating learning goal:', error);
+    throw error;
+  }
 };
 
 export const deleteLearningGoal = async (uid: string, goalId: string) => {
-  const goalRef = doc(db, 'users', uid, 'learning_goals', goalId);
-  await deleteDoc(goalRef);
+  // Validate goalId parameter
+  if (!goalId || typeof goalId !== 'string' || goalId.trim() === '') {
+    throw new Error('Invalid goalId: goalId must be a non-empty string');
+  }
+
+  console.log('Firestore: Deleting learning goal:', uid, goalId);
+
+  try {
+    const goalRef = doc(db, 'users', uid, 'learning_goals', goalId);
+    await deleteDoc(goalRef);
+    console.log('Firestore: Learning goal deleted successfully');
+  } catch (error) {
+    console.error('Firestore: Error deleting learning goal:', error);
+    throw error;
+  }
 };
 
 export const getLearningGoals = async (uid: string): Promise<LearningGoal[]> => {
-  const goalsRef = collection(db, 'users', uid, 'learning_goals');
-  const q = query(goalsRef, orderBy('createdAt', 'desc'));
-  const querySnapshot = await getDocs(q);
-  
-  return querySnapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data(),
-    createdAt: doc.data().createdAt?.toDate() || new Date(),
-    completedAt: doc.data().completedAt?.toDate() || null,
-    targetDate: doc.data().targetDate?.toDate() || null
-  })) as LearningGoal[];
+  try {
+    console.log('Firestore: Loading learning goals for user:', uid);
+    const goalsRef = collection(db, 'users', uid, 'learning_goals');
+    const q = query(goalsRef, orderBy('createdAt', 'desc'));
+    const querySnapshot = await getDocs(q);
+    
+    const goals = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        title: data.title || '',
+        description: data.description || '',
+        targetDate: data.targetDate?.toDate() || null,
+        isCompleted: data.isCompleted || false,
+        completedAt: data.completedAt?.toDate() || null,
+        progress: data.progress || 0,
+        relatedTopics: data.relatedTopics || [],
+        createdAt: data.createdAt?.toDate() || new Date()
+      } as LearningGoal;
+    });
+    
+    console.log('Firestore: Loaded', goals.length, 'learning goals');
+    return goals;
+  } catch (error) {
+    console.error('Firestore: Error loading learning goals:', error);
+    return [];
+  }
 };
 
 export const subscribeToLearningGoals = (uid: string, callback: (goals: LearningGoal[]) => void) => {
+  console.log('Firestore: Setting up learning goals subscription for user:', uid);
   const goalsRef = collection(db, 'users', uid, 'learning_goals');
   const q = query(goalsRef, orderBy('createdAt', 'desc'));
   
   return onSnapshot(q, (snapshot) => {
-    const goals = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate() || new Date(),
-      completedAt: doc.data().completedAt?.toDate() || null,
-      targetDate: doc.data().targetDate?.toDate() || null
-    })) as LearningGoal[];
+    const goals = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        title: data.title || '',
+        description: data.description || '',
+        targetDate: data.targetDate?.toDate() || null,
+        isCompleted: data.isCompleted || false,
+        completedAt: data.completedAt?.toDate() || null,
+        progress: data.progress || 0,
+        relatedTopics: data.relatedTopics || [],
+        createdAt: data.createdAt?.toDate() || new Date()
+      } as LearningGoal;
+    });
+    
+    console.log('Firestore: Learning goals subscription update - now have', goals.length, 'goals');
     callback(goals);
   }, (error) => {
     console.error('Firestore: Learning goals subscription error:', error);
@@ -629,6 +700,20 @@ export const initializeSampleData = async (uid: string) => {
         await addProgress(uid, progress);
       }
       console.log('Firestore: Added sample progress data');
+    }
+
+    // Add sample learning goal (only if user has no existing goals)
+    const existingGoals = await getLearningGoals(uid);
+    if (existingGoals.length === 0) {
+      await addLearningGoal(uid, {
+        title: 'Master React Fundamentals',
+        description: 'Learn React components, state, and props to build interactive web applications',
+        targetDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+        isCompleted: false,
+        progress: 0,
+        relatedTopics: ['React', 'JavaScript']
+      });
+      console.log('Firestore: Added sample learning goal');
     }
 
   } catch (error) {

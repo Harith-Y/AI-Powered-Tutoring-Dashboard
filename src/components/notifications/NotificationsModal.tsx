@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { X, Bell, CheckCircle, Clock, AlertCircle, Trash2, MarkAsUnread, MarkAsRead } from 'lucide-react';
+import { X, Bell, CheckCircle, Clock, AlertCircle, Trash2, AreaChart as MarkAsUnread, BookMarked as MarkAsRead } from 'lucide-react';
 
 interface Notification {
   id: string;

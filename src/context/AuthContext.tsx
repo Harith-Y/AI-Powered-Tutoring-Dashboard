@@ -5,7 +5,8 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   signOut,
-  updateProfile
+  updateProfile,
+  sendPasswordResetEmail
 } from 'firebase/auth';
 import { auth } from '../firebase/config';
 import { User, UserPreferences, Progress, WeeklyPlanItem, Topic, LearningGoal } from '../types';
@@ -41,6 +42,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, displayName: string) => Promise<void>;
   logout: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   updatePreferences: (preferences: UserPreferences) => Promise<void>;
   addGoal: (goal: Omit<LearningGoal, 'id' | 'createdAt'>) => Promise<void>;
   updateGoal: (goalId: string, updates: Partial<LearningGoal>) => Promise<void>;
@@ -135,6 +137,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setAvailableTopics([]);
     } catch (error) {
       console.error('Logout error:', error);
+      throw error;
+    }
+  };
+
+  const resetPassword = async (email: string) => {
+    try {
+      await sendPasswordResetEmail(auth, email, {
+        url: window.location.origin + '/auth',
+        handleCodeInApp: false,
+      });
+    } catch (error) {
+      console.error('Password reset error:', error);
       throw error;
     }
   };
@@ -450,6 +464,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     login,
     signup,
     logout,
+    resetPassword,
     updatePreferences,
     addGoal,
     updateGoal,

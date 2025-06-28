@@ -185,9 +185,9 @@ export const subscribeToLearningGoals = (uid: string, callback: (goals: Learning
   });
 };
 
-// Topics Operations - Massively Expanded with 100+ Topics
+// Topics Operations - Comprehensive Collection (100+ Topics)
 export const getAvailableTopics = (): Topic[] => {
-  console.log('Firestore: getAvailableTopics called - returning comprehensive topic catalog with 100+ topics');
+  console.log('Firestore: getAvailableTopics called - returning comprehensive topic catalog');
   
   // Comprehensive curated list of topics with consistent IDs
   const topics: Topic[] = [
@@ -224,23 +224,23 @@ export const getAvailableTopics = (): Topic[] => {
     },
     {
       id: 'big-o-notation',
-      name: 'Big O Notation & Complexity Analysis',
-      description: 'Understanding time and space complexity for algorithm analysis',
+      name: 'Big O Notation & Complexity',
+      description: 'Understanding time and space complexity analysis',
       category: 'Fundamentals',
       difficulty: 'intermediate',
-      estimatedTime: 90,
+      estimatedTime: 100,
       prerequisites: ['Algorithms & Problem Solving'],
       skills: ['Time Complexity', 'Space Complexity', 'Algorithm Analysis', 'Performance']
     },
     {
-      id: 'recursion-fundamentals',
-      name: 'Recursion & Recursive Thinking',
-      description: 'Master recursive algorithms and problem-solving techniques',
+      id: 'design-patterns',
+      name: 'Software Design Patterns',
+      description: 'Common design patterns and architectural principles',
       category: 'Fundamentals',
-      difficulty: 'intermediate',
-      estimatedTime: 110,
-      prerequisites: ['Programming Fundamentals', 'Algorithms & Problem Solving'],
-      skills: ['Recursion', 'Base Cases', 'Recursive Patterns', 'Stack Frames']
+      difficulty: 'advanced',
+      estimatedTime: 160,
+      prerequisites: ['Programming Fundamentals'],
+      skills: ['Design Patterns', 'Architecture', 'SOLID Principles', 'Code Organization']
     },
 
     // ===== JAVASCRIPT (EXPANDED) =====
@@ -335,14 +335,14 @@ export const getAvailableTopics = (): Topic[] => {
       skills: ['Fetch API', 'REST APIs', 'JSON', 'Error Handling', 'HTTP Methods']
     },
     {
-      id: 'javascript-design-patterns',
-      name: 'JavaScript Design Patterns',
-      description: 'Common design patterns and architectural approaches in JavaScript',
+      id: 'javascript-regex',
+      name: 'Regular Expressions in JavaScript',
+      description: 'Pattern matching and text processing with regular expressions',
       category: 'JavaScript',
-      difficulty: 'advanced',
-      estimatedTime: 130,
-      prerequisites: ['JavaScript Fundamentals', 'JavaScript Closures'],
-      skills: ['Module Pattern', 'Observer Pattern', 'Factory Pattern', 'Singleton Pattern']
+      difficulty: 'intermediate',
+      estimatedTime: 70,
+      prerequisites: ['JavaScript Fundamentals'],
+      skills: ['Regex Patterns', 'Text Processing', 'Validation', 'String Manipulation']
     },
     {
       id: 'javascript-functional',
@@ -350,19 +350,9 @@ export const getAvailableTopics = (): Topic[] => {
       description: 'Functional programming concepts and techniques in JavaScript',
       category: 'JavaScript',
       difficulty: 'advanced',
-      estimatedTime: 140,
+      estimatedTime: 130,
       prerequisites: ['JavaScript ES6+ Features'],
       skills: ['Pure Functions', 'Higher-Order Functions', 'Immutability', 'Function Composition']
-    },
-    {
-      id: 'javascript-regex',
-      name: 'Regular Expressions in JavaScript',
-      description: 'Master pattern matching and text processing with regex',
-      category: 'JavaScript',
-      difficulty: 'intermediate',
-      estimatedTime: 70,
-      prerequisites: ['JavaScript Fundamentals'],
-      skills: ['Regex Patterns', 'String Matching', 'Text Processing', 'Validation']
     },
 
     // ===== REACT (EXPANDED) =====
@@ -444,37 +434,27 @@ export const getAvailableTopics = (): Topic[] => {
       difficulty: 'advanced',
       estimatedTime: 130,
       prerequisites: ['React Hooks', 'React Context'],
-      skills: ['HOCs', 'Render Props', 'Compound Components', 'Component Composition']
+      skills: ['HOCs', 'Render Props', 'Compound Components', 'Advanced Patterns']
     },
     {
-      id: 'react-forms',
-      name: 'React Forms & Validation',
-      description: 'Building and validating forms in React applications',
-      category: 'React',
-      difficulty: 'intermediate',
-      estimatedTime: 80,
-      prerequisites: ['React Fundamentals', 'React Hooks'],
-      skills: ['Form Handling', 'Validation', 'Controlled Components', 'Form Libraries']
-    },
-    {
-      id: 'react-animation',
-      name: 'React Animations & Transitions',
-      description: 'Creating smooth animations and transitions in React',
-      category: 'React',
-      difficulty: 'intermediate',
-      estimatedTime: 90,
-      prerequisites: ['React Fundamentals', 'CSS Animations'],
-      skills: ['React Transition Group', 'Framer Motion', 'CSS Transitions', 'Animation Libraries']
-    },
-    {
-      id: 'react-ssr',
-      name: 'React Server-Side Rendering',
-      description: 'Implementing SSR with Next.js and React',
+      id: 'react-redux',
+      name: 'React with Redux',
+      description: 'State management with Redux and React-Redux',
       category: 'React',
       difficulty: 'advanced',
-      estimatedTime: 150,
-      prerequisites: ['React Fundamentals', 'Node.js & Express'],
-      skills: ['Server-Side Rendering', 'Next.js', 'Static Generation', 'Hydration']
+      estimatedTime: 140,
+      prerequisites: ['React State Management'],
+      skills: ['Redux', 'Actions', 'Reducers', 'Store', 'Middleware']
+    },
+    {
+      id: 'react-nextjs',
+      name: 'Next.js Framework',
+      description: 'Server-side rendering and static site generation with Next.js',
+      category: 'React',
+      difficulty: 'advanced',
+      estimatedTime: 160,
+      prerequisites: ['React Fundamentals', 'React Router'],
+      skills: ['SSR', 'SSG', 'API Routes', 'File-based Routing', 'Performance']
     },
 
     // ===== CSS (EXPANDED) =====
@@ -521,45 +501,45 @@ export const getAvailableTopics = (): Topic[] => {
     {
       id: 'css-responsive',
       name: 'Responsive Web Design',
-      description: 'Creating websites that work on all devices and screen sizes',
+      description: 'Create websites that work on all devices and screen sizes',
       category: 'CSS',
       difficulty: 'intermediate',
       estimatedTime: 100,
       prerequisites: ['CSS Fundamentals', 'CSS Flexbox'],
-      skills: ['Media Queries', 'Mobile-First Design', 'Breakpoints', 'Fluid Layouts']
+      skills: ['Media Queries', 'Mobile-First', 'Breakpoints', 'Fluid Layouts']
     },
     {
       id: 'css-preprocessors',
       name: 'CSS Preprocessors (Sass/SCSS)',
-      description: 'Advanced CSS with variables, mixins, and functions',
+      description: 'Advanced CSS with variables, mixins, and nesting',
       category: 'CSS',
       difficulty: 'intermediate',
       estimatedTime: 80,
       prerequisites: ['CSS Fundamentals'],
-      skills: ['Sass/SCSS', 'Variables', 'Mixins', 'Nesting', 'Functions']
+      skills: ['Sass', 'SCSS', 'Variables', 'Mixins', 'Nesting']
+    },
+    {
+      id: 'css-frameworks',
+      name: 'CSS Frameworks (Bootstrap/Tailwind)',
+      description: 'Rapid development with CSS frameworks',
+      category: 'CSS',
+      difficulty: 'intermediate',
+      estimatedTime: 90,
+      prerequisites: ['CSS Fundamentals'],
+      skills: ['Bootstrap', 'Tailwind CSS', 'Utility Classes', 'Component Libraries']
     },
     {
       id: 'css-architecture',
       name: 'CSS Architecture & Methodologies',
-      description: 'BEM, OOCSS, and other CSS organization strategies',
+      description: 'BEM, OOCSS, and scalable CSS architecture',
       category: 'CSS',
       difficulty: 'advanced',
-      estimatedTime: 90,
+      estimatedTime: 110,
       prerequisites: ['CSS Fundamentals'],
-      skills: ['BEM', 'OOCSS', 'SMACSS', 'CSS Modules', 'Atomic CSS']
-    },
-    {
-      id: 'css-custom-properties',
-      name: 'CSS Custom Properties (Variables)',
-      description: 'Dynamic styling with CSS custom properties and theming',
-      category: 'CSS',
-      difficulty: 'intermediate',
-      estimatedTime: 60,
-      prerequisites: ['CSS Fundamentals'],
-      skills: ['CSS Variables', 'Dynamic Theming', 'Custom Properties', 'CSS Functions']
+      skills: ['BEM', 'OOCSS', 'CSS Architecture', 'Maintainable CSS']
     },
 
-    // ===== TYPESCRIPT (EXPANDED) =====
+    // ===== TYPESCRIPT =====
     {
       id: 'typescript-basics',
       name: 'TypeScript Basics',
@@ -585,20 +565,10 @@ export const getAvailableTopics = (): Topic[] => {
       name: 'TypeScript with React',
       description: 'Building type-safe React applications with TypeScript',
       category: 'TypeScript',
-      difficulty: 'intermediate',
-      estimatedTime: 100,
-      prerequisites: ['TypeScript Basics', 'React Fundamentals'],
-      skills: ['React Types', 'Component Props', 'Event Handling', 'Hooks with TypeScript']
-    },
-    {
-      id: 'typescript-node',
-      name: 'TypeScript with Node.js',
-      description: 'Server-side development with TypeScript and Node.js',
-      category: 'TypeScript',
-      difficulty: 'intermediate',
+      difficulty: 'advanced',
       estimatedTime: 120,
-      prerequisites: ['TypeScript Basics', 'Node.js & Express'],
-      skills: ['Node.js Types', 'Express with TypeScript', 'API Development', 'Type Safety']
+      prerequisites: ['TypeScript Basics', 'React Fundamentals'],
+      skills: ['React Types', 'Component Props', 'Hooks Types', 'Event Handling']
     },
 
     // ===== BACKEND DEVELOPMENT =====
@@ -633,24 +603,14 @@ export const getAvailableTopics = (): Topic[] => {
       skills: ['MongoDB', 'NoSQL', 'Document Databases', 'Mongoose']
     },
     {
-      id: 'postgresql-advanced',
-      name: 'PostgreSQL & Advanced SQL',
-      description: 'Advanced relational database concepts with PostgreSQL',
-      category: 'Backend',
-      difficulty: 'advanced',
-      estimatedTime: 140,
-      prerequisites: ['Database Fundamentals'],
-      skills: ['PostgreSQL', 'Advanced SQL', 'Indexing', 'Performance Optimization']
-    },
-    {
-      id: 'rest-api-design',
-      name: 'REST API Design & Development',
-      description: 'Building robust and scalable REST APIs',
+      id: 'rest-apis',
+      name: 'RESTful API Design',
+      description: 'Design and build RESTful APIs following best practices',
       category: 'Backend',
       difficulty: 'intermediate',
       estimatedTime: 110,
-      prerequisites: ['Node.js & Express', 'Database Fundamentals'],
-      skills: ['REST Principles', 'API Design', 'HTTP Methods', 'Status Codes']
+      prerequisites: ['Node.js & Express'],
+      skills: ['REST', 'HTTP Methods', 'Status Codes', 'API Design', 'Documentation']
     },
     {
       id: 'graphql-basics',
@@ -659,28 +619,90 @@ export const getAvailableTopics = (): Topic[] => {
       category: 'Backend',
       difficulty: 'advanced',
       estimatedTime: 130,
-      prerequisites: ['REST API Design'],
+      prerequisites: ['REST APIs'],
       skills: ['GraphQL', 'Schemas', 'Resolvers', 'Queries', 'Mutations']
     },
     {
-      id: 'authentication-security',
-      name: 'Authentication & Security',
-      description: 'Implementing secure authentication and authorization',
+      id: 'authentication',
+      name: 'Authentication & Authorization',
+      description: 'Secure user authentication and authorization systems',
       category: 'Backend',
       difficulty: 'advanced',
-      estimatedTime: 150,
-      prerequisites: ['REST API Design'],
-      skills: ['JWT', 'OAuth', 'Password Hashing', 'Security Best Practices']
+      estimatedTime: 140,
+      prerequisites: ['Node.js & Express'],
+      skills: ['JWT', 'OAuth', 'Sessions', 'Security', 'User Management']
     },
     {
-      id: 'microservices-architecture',
+      id: 'microservices',
       name: 'Microservices Architecture',
-      description: 'Designing and building microservices-based applications',
+      description: 'Building scalable applications with microservices',
       category: 'Backend',
       difficulty: 'advanced',
       estimatedTime: 180,
-      prerequisites: ['REST API Design', 'Database Fundamentals'],
+      prerequisites: ['REST APIs', 'Database Fundamentals'],
       skills: ['Microservices', 'Service Communication', 'API Gateway', 'Distributed Systems']
+    },
+
+    // ===== PYTHON =====
+    {
+      id: 'python-basics',
+      name: 'Python Fundamentals',
+      description: 'Learn Python programming from the ground up',
+      category: 'Python',
+      difficulty: 'beginner',
+      estimatedTime: 140,
+      prerequisites: ['Programming Fundamentals'],
+      skills: ['Python Syntax', 'Data Types', 'Control Flow', 'Functions', 'Modules']
+    },
+    {
+      id: 'python-oop',
+      name: 'Object-Oriented Programming in Python',
+      description: 'Classes, objects, inheritance, and polymorphism in Python',
+      category: 'Python',
+      difficulty: 'intermediate',
+      estimatedTime: 120,
+      prerequisites: ['Python Fundamentals'],
+      skills: ['Classes', 'Objects', 'Inheritance', 'Polymorphism', 'Encapsulation']
+    },
+    {
+      id: 'python-web-flask',
+      name: 'Web Development with Flask',
+      description: 'Build web applications using the Flask framework',
+      category: 'Python',
+      difficulty: 'intermediate',
+      estimatedTime: 130,
+      prerequisites: ['Python Fundamentals'],
+      skills: ['Flask', 'Routing', 'Templates', 'Forms', 'Database Integration']
+    },
+    {
+      id: 'python-django',
+      name: 'Django Web Framework',
+      description: 'Full-featured web development with Django',
+      category: 'Python',
+      difficulty: 'advanced',
+      estimatedTime: 180,
+      prerequisites: ['Python OOP', 'Database Fundamentals'],
+      skills: ['Django', 'Models', 'Views', 'Templates', 'Admin Interface']
+    },
+    {
+      id: 'python-data-science',
+      name: 'Python for Data Science',
+      description: 'Data analysis and visualization with Python libraries',
+      category: 'Python',
+      difficulty: 'intermediate',
+      estimatedTime: 160,
+      prerequisites: ['Python Fundamentals'],
+      skills: ['Pandas', 'NumPy', 'Matplotlib', 'Data Analysis', 'Visualization']
+    },
+    {
+      id: 'python-machine-learning',
+      name: 'Machine Learning with Python',
+      description: 'Introduction to machine learning using Python',
+      category: 'Python',
+      difficulty: 'advanced',
+      estimatedTime: 200,
+      prerequisites: ['Python Data Science'],
+      skills: ['Scikit-learn', 'Machine Learning', 'Algorithms', 'Model Training', 'Evaluation']
     },
 
     // ===== TESTING =====
@@ -696,33 +718,33 @@ export const getAvailableTopics = (): Topic[] => {
     },
     {
       id: 'jest-testing',
-      name: 'Jest Testing Framework',
-      description: 'Comprehensive testing with Jest',
+      name: 'Testing with Jest',
+      description: 'JavaScript testing framework for unit and integration tests',
       category: 'Testing',
       difficulty: 'intermediate',
       estimatedTime: 90,
       prerequisites: ['Testing Fundamentals'],
-      skills: ['Jest', 'Test Suites', 'Mocking', 'Coverage Reports']
+      skills: ['Jest', 'Test Suites', 'Mocking', 'Coverage', 'Async Testing']
     },
     {
       id: 'e2e-testing',
       name: 'End-to-End Testing',
-      description: 'Full application testing with Cypress and Playwright',
+      description: 'Automated testing with Cypress and Playwright',
       category: 'Testing',
       difficulty: 'advanced',
       estimatedTime: 120,
       prerequisites: ['Testing Fundamentals'],
-      skills: ['Cypress', 'Playwright', 'E2E Testing', 'Test Automation']
+      skills: ['Cypress', 'Playwright', 'E2E Testing', 'Test Automation', 'Browser Testing']
     },
     {
-      id: 'api-testing',
-      name: 'API Testing & Integration Tests',
-      description: 'Testing APIs and service integrations',
+      id: 'test-automation',
+      name: 'Test Automation & CI/CD',
+      description: 'Automated testing in continuous integration pipelines',
       category: 'Testing',
-      difficulty: 'intermediate',
-      estimatedTime: 80,
-      prerequisites: ['Testing Fundamentals', 'REST API Design'],
-      skills: ['API Testing', 'Integration Tests', 'Postman', 'Test Automation']
+      difficulty: 'advanced',
+      estimatedTime: 110,
+      prerequisites: ['Jest Testing', 'Git Version Control'],
+      skills: ['CI/CD', 'Test Automation', 'GitHub Actions', 'Pipeline Testing']
     },
 
     // ===== TOOLS & WORKFLOW =====
@@ -738,18 +760,18 @@ export const getAvailableTopics = (): Topic[] => {
     },
     {
       id: 'github-workflow',
-      name: 'GitHub & Collaboration',
+      name: 'GitHub Workflow & Collaboration',
       description: 'Advanced Git workflows and GitHub features',
       category: 'Tools',
       difficulty: 'intermediate',
-      estimatedTime: 70,
-      prerequisites: ['Git & Version Control'],
-      skills: ['Pull Requests', 'Code Reviews', 'GitHub Actions', 'Project Management']
+      estimatedTime: 80,
+      prerequisites: ['Git Version Control'],
+      skills: ['Pull Requests', 'Code Review', 'GitHub Actions', 'Project Management']
     },
     {
       id: 'webpack-bundling',
       name: 'Webpack & Build Tools',
-      description: 'Learn module bundling and build optimization',
+      description: 'Module bundling and build optimization',
       category: 'Tools',
       difficulty: 'advanced',
       estimatedTime: 110,
@@ -759,332 +781,270 @@ export const getAvailableTopics = (): Topic[] => {
     {
       id: 'vite-tooling',
       name: 'Vite & Modern Build Tools',
-      description: 'Fast build tool and development server',
+      description: 'Fast build tool for modern web development',
       category: 'Tools',
       difficulty: 'intermediate',
-      estimatedTime: 60,
+      estimatedTime: 70,
       prerequisites: ['JavaScript ES6+ Features'],
       skills: ['Vite', 'Fast Builds', 'Hot Module Replacement', 'Plugin System']
     },
     {
-      id: 'docker-containers',
+      id: 'docker-basics',
       name: 'Docker & Containerization',
-      description: 'Containerizing applications with Docker',
+      description: 'Containerize applications with Docker',
       category: 'Tools',
-      difficulty: 'advanced',
-      estimatedTime: 130,
+      difficulty: 'intermediate',
+      estimatedTime: 120,
       prerequisites: ['Node.js & Express'],
-      skills: ['Docker', 'Containers', 'Images', 'Docker Compose']
+      skills: ['Docker', 'Containers', 'Images', 'Dockerfile', 'Docker Compose']
     },
     {
-      id: 'ci-cd-pipelines',
-      name: 'CI/CD Pipelines',
-      description: 'Continuous integration and deployment workflows',
+      id: 'aws-basics',
+      name: 'AWS Cloud Fundamentals',
+      description: 'Introduction to Amazon Web Services cloud platform',
       category: 'Tools',
-      difficulty: 'advanced',
-      estimatedTime: 120,
-      prerequisites: ['Git & Version Control', 'Docker & Containerization'],
-      skills: ['CI/CD', 'GitHub Actions', 'Automated Testing', 'Deployment']
-    },
-
-    // ===== FRONTEND FRAMEWORKS =====
-    {
-      id: 'vue-fundamentals',
-      name: 'Vue.js Fundamentals',
-      description: 'Progressive JavaScript framework for building user interfaces',
-      category: 'Frontend Frameworks',
       difficulty: 'intermediate',
-      estimatedTime: 120,
-      prerequisites: ['JavaScript Fundamentals'],
-      skills: ['Vue Components', 'Directives', 'Vue Router', 'Vuex']
-    },
-    {
-      id: 'angular-basics',
-      name: 'Angular Fundamentals',
-      description: 'TypeScript-based framework for building web applications',
-      category: 'Frontend Frameworks',
-      difficulty: 'advanced',
-      estimatedTime: 160,
-      prerequisites: ['TypeScript Basics'],
-      skills: ['Angular Components', 'Services', 'Dependency Injection', 'RxJS']
-    },
-    {
-      id: 'svelte-basics',
-      name: 'Svelte Fundamentals',
-      description: 'Compile-time framework for building fast web applications',
-      category: 'Frontend Frameworks',
-      difficulty: 'intermediate',
-      estimatedTime: 100,
-      prerequisites: ['JavaScript Fundamentals'],
-      skills: ['Svelte Components', 'Reactivity', 'Stores', 'SvelteKit']
-    },
-    {
-      id: 'nextjs-framework',
-      name: 'Next.js Full-Stack Framework',
-      description: 'React framework with server-side rendering and static generation',
-      category: 'Frontend Frameworks',
-      difficulty: 'advanced',
       estimatedTime: 140,
-      prerequisites: ['React Fundamentals', 'Node.js & Express'],
-      skills: ['Next.js', 'SSR', 'Static Generation', 'API Routes']
+      prerequisites: ['Node.js & Express'],
+      skills: ['AWS', 'EC2', 'S3', 'Lambda', 'Cloud Computing']
     },
 
     // ===== MOBILE DEVELOPMENT =====
     {
       id: 'react-native-basics',
       name: 'React Native Fundamentals',
-      description: 'Build native mobile apps using React',
+      description: 'Build mobile apps with React Native',
       category: 'Mobile',
-      difficulty: 'advanced',
+      difficulty: 'intermediate',
       estimatedTime: 150,
       prerequisites: ['React Fundamentals'],
-      skills: ['React Native', 'Mobile Components', 'Navigation', 'Platform APIs']
+      skills: ['React Native', 'Mobile Development', 'Navigation', 'Platform APIs']
     },
     {
-      id: 'flutter-dart',
-      name: 'Flutter & Dart',
+      id: 'flutter-basics',
+      name: 'Flutter & Dart Fundamentals',
       description: 'Cross-platform mobile development with Flutter',
       category: 'Mobile',
-      difficulty: 'advanced',
-      estimatedTime: 180,
+      difficulty: 'intermediate',
+      estimatedTime: 160,
       prerequisites: ['Programming Fundamentals'],
-      skills: ['Flutter', 'Dart', 'Widgets', 'State Management']
+      skills: ['Flutter', 'Dart', 'Widgets', 'State Management', 'Mobile UI']
     },
     {
-      id: 'pwa-development',
-      name: 'Progressive Web Apps (PWA)',
-      description: 'Building app-like experiences on the web',
+      id: 'ios-swift',
+      name: 'iOS Development with Swift',
+      description: 'Native iOS app development using Swift',
       category: 'Mobile',
       difficulty: 'advanced',
-      estimatedTime: 110,
-      prerequisites: ['JavaScript Fundamentals', 'Web APIs'],
-      skills: ['Service Workers', 'Web App Manifest', 'Offline Functionality', 'Push Notifications']
+      estimatedTime: 200,
+      prerequisites: ['Programming Fundamentals'],
+      skills: ['Swift', 'iOS', 'UIKit', 'Xcode', 'App Store']
+    },
+    {
+      id: 'android-kotlin',
+      name: 'Android Development with Kotlin',
+      description: 'Native Android app development using Kotlin',
+      category: 'Mobile',
+      difficulty: 'advanced',
+      estimatedTime: 190,
+      prerequisites: ['Programming Fundamentals'],
+      skills: ['Kotlin', 'Android', 'Activities', 'Fragments', 'Material Design']
     },
 
-    // ===== DATA SCIENCE & AI =====
+    // ===== DATA & ANALYTICS =====
     {
-      id: 'python-basics',
-      name: 'Python Fundamentals',
-      description: 'Learn Python programming from basics to intermediate concepts',
-      category: 'Python',
-      difficulty: 'beginner',
-      estimatedTime: 140,
-      prerequisites: ['Programming Fundamentals'],
-      skills: ['Python Syntax', 'Data Types', 'Functions', 'Object-Oriented Programming']
-    },
-    {
-      id: 'data-analysis-pandas',
-      name: 'Data Analysis with Pandas',
-      description: 'Data manipulation and analysis using Python Pandas',
-      category: 'Data Science',
-      difficulty: 'intermediate',
-      estimatedTime: 120,
-      prerequisites: ['Python Fundamentals'],
-      skills: ['Pandas', 'Data Manipulation', 'Data Cleaning', 'Data Analysis']
-    },
-    {
-      id: 'machine-learning-basics',
-      name: 'Machine Learning Fundamentals',
-      description: 'Introduction to machine learning concepts and algorithms',
-      category: 'Data Science',
+      id: 'sql-advanced',
+      name: 'Advanced SQL & Database Design',
+      description: 'Complex queries, optimization, and database design',
+      category: 'Data',
       difficulty: 'advanced',
-      estimatedTime: 180,
-      prerequisites: ['Python Fundamentals', 'Data Analysis with Pandas'],
-      skills: ['ML Algorithms', 'Supervised Learning', 'Unsupervised Learning', 'Model Evaluation']
+      estimatedTime: 140,
+      prerequisites: ['Database Fundamentals'],
+      skills: ['Advanced SQL', 'Query Optimization', 'Indexing', 'Database Design']
     },
     {
       id: 'data-visualization',
       name: 'Data Visualization',
-      description: 'Creating compelling visualizations with D3.js and Chart.js',
-      category: 'Data Science',
+      description: 'Create compelling data visualizations with D3.js and Chart.js',
+      category: 'Data',
       difficulty: 'intermediate',
-      estimatedTime: 100,
+      estimatedTime: 120,
       prerequisites: ['JavaScript Fundamentals'],
-      skills: ['D3.js', 'Chart.js', 'Data Visualization', 'Interactive Charts']
+      skills: ['D3.js', 'Chart.js', 'Data Visualization', 'SVG', 'Interactive Charts']
+    },
+    {
+      id: 'analytics-tracking',
+      name: 'Web Analytics & Tracking',
+      description: 'Implement analytics and user tracking in web applications',
+      category: 'Data',
+      difficulty: 'intermediate',
+      estimatedTime: 80,
+      prerequisites: ['JavaScript Fundamentals'],
+      skills: ['Google Analytics', 'Event Tracking', 'User Behavior', 'Metrics']
     },
 
-    // ===== CYBERSECURITY =====
+    // ===== SECURITY =====
     {
-      id: 'web-security-basics',
+      id: 'web-security',
       name: 'Web Security Fundamentals',
-      description: 'Essential web security concepts and best practices',
+      description: 'Essential security practices for web applications',
       category: 'Security',
       difficulty: 'intermediate',
       estimatedTime: 110,
-      prerequisites: ['Web APIs & Fetch'],
-      skills: ['HTTPS', 'XSS Prevention', 'CSRF Protection', 'Security Headers']
+      prerequisites: ['Node.js & Express'],
+      skills: ['HTTPS', 'XSS Prevention', 'CSRF Protection', 'Input Validation', 'Security Headers']
     },
     {
-      id: 'owasp-top-10',
-      name: 'OWASP Top 10 Security Risks',
-      description: 'Understanding and mitigating the most critical web application security risks',
+      id: 'oauth-security',
+      name: 'OAuth & API Security',
+      description: 'Secure API authentication and authorization',
       category: 'Security',
       difficulty: 'advanced',
+      estimatedTime: 100,
+      prerequisites: ['Authentication'],
+      skills: ['OAuth 2.0', 'API Security', 'Token Management', 'Scope-based Access']
+    },
+
+    // ===== PERFORMANCE =====
+    {
+      id: 'web-performance',
+      name: 'Web Performance Optimization',
+      description: 'Optimize website speed and user experience',
+      category: 'Performance',
+      difficulty: 'advanced',
       estimatedTime: 130,
-      prerequisites: ['Web Security Fundamentals'],
-      skills: ['OWASP', 'Vulnerability Assessment', 'Security Testing', 'Risk Mitigation']
+      prerequisites: ['JavaScript Fundamentals', 'CSS Fundamentals'],
+      skills: ['Performance Metrics', 'Optimization Techniques', 'Lazy Loading', 'Caching']
     },
     {
-      id: 'penetration-testing',
-      name: 'Ethical Hacking & Penetration Testing',
-      description: 'Learn ethical hacking techniques and penetration testing methodologies',
-      category: 'Security',
-      difficulty: 'advanced',
-      estimatedTime: 160,
-      prerequisites: ['OWASP Top 10 Security Risks'],
-      skills: ['Penetration Testing', 'Vulnerability Scanning', 'Ethical Hacking', 'Security Assessment']
-    },
-
-    // ===== CLOUD & DEVOPS =====
-    {
-      id: 'aws-basics',
-      name: 'AWS Cloud Fundamentals',
-      description: 'Introduction to Amazon Web Services and cloud computing',
-      category: 'Cloud',
-      difficulty: 'intermediate',
-      estimatedTime: 140,
-      prerequisites: ['Node.js & Express'],
-      skills: ['AWS Services', 'EC2', 'S3', 'Lambda', 'Cloud Architecture']
-    },
-    {
-      id: 'azure-fundamentals',
-      name: 'Microsoft Azure Basics',
-      description: 'Getting started with Microsoft Azure cloud platform',
-      category: 'Cloud',
-      difficulty: 'intermediate',
-      estimatedTime: 130,
-      prerequisites: ['Node.js & Express'],
-      skills: ['Azure Services', 'Virtual Machines', 'App Services', 'Azure Functions']
-    },
-    {
-      id: 'kubernetes-basics',
-      name: 'Kubernetes Fundamentals',
-      description: 'Container orchestration with Kubernetes',
-      category: 'Cloud',
-      difficulty: 'advanced',
-      estimatedTime: 150,
-      prerequisites: ['Docker & Containerization'],
-      skills: ['Kubernetes', 'Pods', 'Services', 'Deployments', 'Container Orchestration']
-    },
-    {
-      id: 'terraform-iac',
-      name: 'Infrastructure as Code with Terraform',
-      description: 'Managing cloud infrastructure with Terraform',
-      category: 'Cloud',
-      difficulty: 'advanced',
-      estimatedTime: 120,
-      prerequisites: ['AWS Cloud Fundamentals'],
-      skills: ['Terraform', 'Infrastructure as Code', 'Cloud Provisioning', 'State Management']
-    },
-
-    // ===== BLOCKCHAIN & WEB3 =====
-    {
-      id: 'blockchain-basics',
-      name: 'Blockchain Fundamentals',
-      description: 'Understanding blockchain technology and cryptocurrencies',
-      category: 'Blockchain',
-      difficulty: 'intermediate',
-      estimatedTime: 120,
-      prerequisites: ['Programming Fundamentals'],
-      skills: ['Blockchain', 'Cryptocurrency', 'Distributed Ledger', 'Consensus Mechanisms']
-    },
-    {
-      id: 'ethereum-solidity',
-      name: 'Ethereum & Solidity Development',
-      description: 'Smart contract development on the Ethereum blockchain',
-      category: 'Blockchain',
-      difficulty: 'advanced',
-      estimatedTime: 160,
-      prerequisites: ['Blockchain Fundamentals'],
-      skills: ['Ethereum', 'Solidity', 'Smart Contracts', 'DApps']
-    },
-    {
-      id: 'web3-development',
-      name: 'Web3 & DApp Development',
-      description: 'Building decentralized applications with Web3 technologies',
-      category: 'Blockchain',
-      difficulty: 'advanced',
-      estimatedTime: 140,
-      prerequisites: ['Ethereum & Solidity Development', 'React Fundamentals'],
-      skills: ['Web3.js', 'MetaMask Integration', 'DApp Frontend', 'Blockchain Interaction']
-    },
-
-    // ===== GAME DEVELOPMENT =====
-    {
-      id: 'unity-csharp',
-      name: 'Unity Game Development with C#',
-      description: 'Creating games using Unity engine and C# programming',
-      category: 'Game Development',
-      difficulty: 'advanced',
-      estimatedTime: 180,
-      prerequisites: ['Programming Fundamentals'],
-      skills: ['Unity', 'C#', 'Game Physics', '3D Graphics', 'Game Logic']
-    },
-    {
-      id: 'javascript-game-dev',
-      name: 'JavaScript Game Development',
-      description: 'Browser-based game development with JavaScript and Canvas',
-      category: 'Game Development',
-      difficulty: 'intermediate',
-      estimatedTime: 130,
-      prerequisites: ['JavaScript Fundamentals', 'DOM Manipulation'],
-      skills: ['Canvas API', 'Game Loop', 'Collision Detection', 'Animation']
-    },
-
-    // ===== SPECIALIZED TOPICS =====
-    {
-      id: 'accessibility-a11y',
-      name: 'Web Accessibility (A11y)',
-      description: 'Creating inclusive web experiences for all users',
-      category: 'Accessibility',
+      id: 'lighthouse-optimization',
+      name: 'Lighthouse & Core Web Vitals',
+      description: 'Improve website performance using Lighthouse metrics',
+      category: 'Performance',
       difficulty: 'intermediate',
       estimatedTime: 90,
-      prerequisites: ['CSS Fundamentals', 'JavaScript Fundamentals'],
+      prerequisites: ['Web Performance'],
+      skills: ['Lighthouse', 'Core Web Vitals', 'Performance Auditing', 'Optimization']
+    },
+
+    // ===== ACCESSIBILITY =====
+    {
+      id: 'web-accessibility',
+      name: 'Web Accessibility (a11y)',
+      description: 'Build inclusive web applications for all users',
+      category: 'Accessibility',
+      difficulty: 'intermediate',
+      estimatedTime: 100,
+      prerequisites: ['CSS Fundamentals', 'JavaScript DOM'],
       skills: ['WCAG Guidelines', 'Screen Readers', 'Keyboard Navigation', 'Semantic HTML']
     },
     {
-      id: 'seo-optimization',
-      name: 'SEO & Web Performance',
-      description: 'Search engine optimization and web performance techniques',
-      category: 'Performance',
-      difficulty: 'intermediate',
-      estimatedTime: 100,
-      prerequisites: ['CSS Fundamentals', 'JavaScript Fundamentals'],
-      skills: ['SEO', 'Core Web Vitals', 'Performance Optimization', 'Technical SEO']
-    },
-    {
-      id: 'webgl-graphics',
-      name: 'WebGL & 3D Graphics',
-      description: 'Creating 3D graphics and visualizations in the browser',
-      category: 'Graphics',
+      id: 'aria-accessibility',
+      name: 'ARIA & Advanced Accessibility',
+      description: 'Advanced accessibility techniques with ARIA',
+      category: 'Accessibility',
       difficulty: 'advanced',
-      estimatedTime: 150,
-      prerequisites: ['JavaScript Fundamentals'],
-      skills: ['WebGL', '3D Graphics', 'Shaders', 'Three.js']
+      estimatedTime: 90,
+      prerequisites: ['Web Accessibility'],
+      skills: ['ARIA Attributes', 'Live Regions', 'Focus Management', 'Accessibility Testing']
     },
+
+    // ===== EMERGING TECHNOLOGIES =====
     {
-      id: 'iot-development',
-      name: 'IoT Development with JavaScript',
-      description: 'Internet of Things development using Node.js and hardware',
-      category: 'IoT',
+      id: 'pwa-development',
+      name: 'Progressive Web Apps (PWA)',
+      description: 'Build app-like experiences for the web',
+      category: 'Emerging',
       difficulty: 'advanced',
       estimatedTime: 140,
-      prerequisites: ['Node.js & Express'],
-      skills: ['IoT', 'Hardware Programming', 'Sensors', 'Real-time Communication']
+      prerequisites: ['JavaScript Fundamentals', 'Web APIs'],
+      skills: ['Service Workers', 'Web App Manifest', 'Offline Functionality', 'Push Notifications']
     },
     {
-      id: 'ar-vr-web',
-      name: 'AR/VR Web Development',
-      description: 'Augmented and Virtual Reality experiences on the web',
-      category: 'AR/VR',
+      id: 'webassembly-basics',
+      name: 'WebAssembly (WASM) Fundamentals',
+      description: 'High-performance web applications with WebAssembly',
+      category: 'Emerging',
+      difficulty: 'advanced',
+      estimatedTime: 120,
+      prerequisites: ['JavaScript Fundamentals'],
+      skills: ['WebAssembly', 'WASM', 'Performance', 'Binary Format']
+    },
+    {
+      id: 'web3-blockchain',
+      name: 'Web3 & Blockchain Development',
+      description: 'Decentralized applications and blockchain integration',
+      category: 'Emerging',
+      difficulty: 'advanced',
+      estimatedTime: 180,
+      prerequisites: ['JavaScript Fundamentals'],
+      skills: ['Blockchain', 'Smart Contracts', 'Web3', 'DApps', 'Ethereum']
+    },
+    {
+      id: 'ai-integration',
+      name: 'AI Integration in Web Apps',
+      description: 'Integrate AI and machine learning into web applications',
+      category: 'Emerging',
       difficulty: 'advanced',
       estimatedTime: 160,
-      prerequisites: ['WebGL & 3D Graphics'],
-      skills: ['WebXR', 'A-Frame', 'AR.js', 'VR Development']
+      prerequisites: ['JavaScript Fundamentals', 'REST APIs'],
+      skills: ['AI APIs', 'Machine Learning', 'Natural Language Processing', 'Computer Vision']
+    },
+
+    // ===== SOFT SKILLS & CAREER =====
+    {
+      id: 'code-review',
+      name: 'Code Review Best Practices',
+      description: 'Effective code review techniques and collaboration',
+      category: 'Career',
+      difficulty: 'intermediate',
+      estimatedTime: 60,
+      prerequisites: ['Git Version Control'],
+      skills: ['Code Review', 'Collaboration', 'Communication', 'Quality Assurance']
+    },
+    {
+      id: 'technical-writing',
+      name: 'Technical Writing & Documentation',
+      description: 'Write clear technical documentation and README files',
+      category: 'Career',
+      difficulty: 'beginner',
+      estimatedTime: 70,
+      prerequisites: [],
+      skills: ['Documentation', 'Technical Writing', 'README', 'API Documentation']
+    },
+    {
+      id: 'agile-methodologies',
+      name: 'Agile Development & Scrum',
+      description: 'Agile development practices and project management',
+      category: 'Career',
+      difficulty: 'beginner',
+      estimatedTime: 80,
+      prerequisites: [],
+      skills: ['Agile', 'Scrum', 'Project Management', 'Team Collaboration']
+    },
+    {
+      id: 'system-design',
+      name: 'System Design Fundamentals',
+      description: 'Design scalable and reliable software systems',
+      category: 'Career',
+      difficulty: 'advanced',
+      estimatedTime: 160,
+      prerequisites: ['Database Fundamentals', 'REST APIs'],
+      skills: ['System Design', 'Scalability', 'Architecture', 'Distributed Systems']
+    },
+    {
+      id: 'interview-preparation',
+      name: 'Technical Interview Preparation',
+      description: 'Prepare for coding interviews and technical assessments',
+      category: 'Career',
+      difficulty: 'intermediate',
+      estimatedTime: 120,
+      prerequisites: ['Algorithms & Problem Solving'],
+      skills: ['Coding Interviews', 'Problem Solving', 'Data Structures', 'Algorithms']
     }
   ];
 
-  console.log('Firestore: Returning comprehensive catalog with', topics.length, 'topics across', new Set(topics.map(t => t.category)).size, 'categories');
+  console.log('Firestore: Returning', topics.length, 'comprehensive topics');
   return topics;
 };
 
@@ -1378,20 +1338,6 @@ export const initializeSampleData = async (uid: string) => {
         await addProgress(uid, progress);
       }
       console.log('Firestore: Added sample progress data');
-    }
-
-    // Add sample learning goal (only if user has no existing goals)
-    const existingGoals = await getLearningGoals(uid);
-    if (existingGoals.length === 0) {
-      await addLearningGoal(uid, {
-        title: 'Master React Fundamentals',
-        description: 'Learn React components, state, and props to build interactive web applications',
-        targetDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-        isCompleted: false,
-        progress: 0,
-        relatedTopics: ['React', 'JavaScript']
-      });
-      console.log('Firestore: Added sample learning goal');
     }
 
   } catch (error) {

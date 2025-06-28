@@ -4,11 +4,13 @@ import { useTheme } from '../../context/ThemeContext';
 import { LogOut, Settings, User, Bell, Search, Brain, Sparkles, Menu, X } from 'lucide-react';
 import SettingsModal from '../settings/SettingsModal';
 import ProfileModal from '../profile/ProfileModal';
+import NotificationsModal from '../notifications/NotificationsModal';
 
 const Header: React.FC = () => {
   const { currentUser, userProfile, logout } = useAuth();
   const { isDark } = useTheme();
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -33,6 +35,11 @@ const Header: React.FC = () => {
   // Get display name and email from either userProfile or currentUser
   const displayName = userProfile?.displayName || currentUser?.displayName || 'User';
   const email = userProfile?.email || currentUser?.email || '';
+
+  const handleViewAllNotifications = () => {
+    setShowNotifications(false);
+    setShowNotificationsModal(true);
+  };
 
   return (
     <>
@@ -151,7 +158,10 @@ const Header: React.FC = () => {
                       ))}
                     </div>
                     <div className={`px-4 py-2 border-t ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
-                      <button className="text-sm text-indigo-600 hover:text-indigo-800 font-medium">
+                      <button 
+                        onClick={handleViewAllNotifications}
+                        className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+                      >
                         View all notifications
                       </button>
                     </div>
@@ -384,7 +394,10 @@ const Header: React.FC = () => {
                 </button>
 
                 <button
-                  onClick={() => setShowNotifications(!showNotifications)}
+                  onClick={() => {
+                    setShowNotificationsModal(true);
+                    setShowMobileMenu(false);
+                  }}
                   className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors touch-target ${
                     isDark 
                       ? 'text-gray-300 hover:bg-gray-700' 
@@ -418,6 +431,7 @@ const Header: React.FC = () => {
       {/* Modals */}
       <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
       <ProfileModal isOpen={showProfile} onClose={() => setShowProfile(false)} />
+      <NotificationsModal isOpen={showNotificationsModal} onClose={() => setShowNotificationsModal(false)} />
     </>
   );
 };

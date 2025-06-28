@@ -42,9 +42,12 @@ const ProgressOverview: React.FC = () => {
   const totalStudyTime = weeklyStats?.totalTimeSpent || 0;
   const averageScore = weeklyStats?.averageScore || 0;
 
+  // Filter out goals with invalid IDs to prevent errors
+  const validLearningGoals = learningGoals.filter(goal => goal.id && goal.id.trim() !== '');
+  
   // Learning goals progress
-  const activeGoals = learningGoals.filter(goal => !goal.isCompleted);
-  const completedGoals = learningGoals.filter(goal => goal.isCompleted);
+  const activeGoals = validLearningGoals.filter(goal => !goal.isCompleted);
+  const completedGoals = validLearningGoals.filter(goal => goal.isCompleted);
 
   // Topics breakdown with better debugging
   const availableTopicsToShow = availableTopics.filter(topic => !topic.isCompleted);
@@ -357,8 +360,8 @@ const ProgressOverview: React.FC = () => {
             </div>
             
             <div className="space-y-4 max-h-80 overflow-y-auto">
-              {learningGoals.length ? (
-                learningGoals.map((goal) => (
+              {validLearningGoals.length ? (
+                validLearningGoals.map((goal) => (
                   <div key={goal.id} className="group">
                     <div className={`p-4 rounded-xl transition-all duration-300 border ${
                       goal.isCompleted

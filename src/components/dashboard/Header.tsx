@@ -159,21 +159,6 @@ const Header: React.FC = () => {
                 )}
               </div>
 
-              {/* Bolt.new Badge */}
-              <a
-                href="https://bolt.new/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group transition-all duration-300 hover:scale-110 p-1"
-                title="Built with Bolt.new"
-              >
-                <img
-                  src="/white_circle_360x360.png"
-                  alt="Built with Bolt.new"
-                  className="w-8 h-8 sm:w-10 sm:h-10 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 group-hover:shadow-white/20"
-                />
-              </a>
-
               {/* User Profile */}
               <div className="flex items-center space-x-2 sm:space-x-3">
                 <div className="hidden md:block text-right">
@@ -267,6 +252,21 @@ const Header: React.FC = () => {
                   )}
                 </div>
               </div>
+
+              {/* Bolt.new Badge - Extreme Right */}
+              <a
+                href="https://bolt.new/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group transition-all duration-300 hover:scale-110 p-1"
+                title="Built with Bolt.new"
+              >
+                <img
+                  src="/white_circle_360x360.png"
+                  alt="Built with Bolt.new"
+                  className="w-8 h-8 sm:w-10 sm:h-10 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 group-hover:shadow-white/20"
+                />
+              </a>
             </div>
 
             {/* Mobile Menu Button */}

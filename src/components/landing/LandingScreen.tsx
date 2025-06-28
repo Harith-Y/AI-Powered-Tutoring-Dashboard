@@ -210,22 +210,6 @@ const LandingScreen: React.FC = () => {
         ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900' 
         : 'bg-gradient-to-br from-indigo-50 via-white to-purple-50'
     }`}>
-      {/* Bolt.new Badge */}
-      <a
-        href="https://bolt.new/"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="fixed top-4 right-4 sm:top-6 sm:right-6 z-50 group transition-all duration-300 hover:scale-110"
-        title="Built with Bolt.new"
-      >
-        <img
-          src="/white_circle_360x360.png"
-          alt="Built with Bolt.new"
-          className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 group-hover:shadow-white/20"
-        />
-        <div className="absolute inset-0 bg-white/10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-      </a>
-
       {/* Background Elements */}
       <div className="absolute inset-0 overflow-hidden">
         <div className={`absolute -top-40 -right-40 w-80 h-80 rounded-full blur-3xl transition-colors ${

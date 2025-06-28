@@ -120,7 +120,17 @@ const ProgressOverview: React.FC = () => {
   };
 
   const handleCompleteGoal = async (goalId: string) => {
-    if (!currentUser) return;
+    // Validate goalId before proceeding
+    if (!goalId || typeof goalId !== 'string' || goalId.trim() === '') {
+      console.error('Invalid goalId provided to handleCompleteGoal:', goalId);
+      setError('Invalid goal ID. Please try again.');
+      return;
+    }
+
+    if (!currentUser) {
+      setError('You must be logged in to complete goals.');
+      return;
+    }
 
     try {
       await completeGoal(goalId);
@@ -132,7 +142,17 @@ const ProgressOverview: React.FC = () => {
   };
 
   const handleDeleteGoal = async (goalId: string) => {
-    if (!currentUser) return;
+    // Validate goalId before proceeding
+    if (!goalId || typeof goalId !== 'string' || goalId.trim() === '') {
+      console.error('Invalid goalId provided to handleDeleteGoal:', goalId);
+      setError('Invalid goal ID. Please try again.');
+      return;
+    }
+
+    if (!currentUser) {
+      setError('You must be logged in to delete goals.');
+      return;
+    }
 
     if (!confirm('Are you sure you want to delete this goal?')) {
       return;

@@ -88,7 +88,14 @@ const ProgressOverview: React.FC = () => {
   };
 
   const handleAddGoal = async () => {
-    if (!currentUser || !newGoal.title.trim()) {
+    console.log('handleAddGoal called with:', { currentUser: !!currentUser, newGoal });
+    
+    if (!currentUser) {
+      setError('Please log in to add goals');
+      return;
+    }
+
+    if (!newGoal.title.trim()) {
       setError('Please enter a goal title');
       return;
     }
@@ -97,6 +104,8 @@ const ProgressOverview: React.FC = () => {
     setError(null);
 
     try {
+      console.log('Adding goal:', newGoal);
+      
       await addGoal({
         title: newGoal.title.trim(),
         description: newGoal.description.trim(),
@@ -106,6 +115,9 @@ const ProgressOverview: React.FC = () => {
         relatedTopics: newGoal.relatedTopics
       });
       
+      console.log('Goal added successfully');
+      
+      // Reset form
       setNewGoal({
         title: '',
         description: '',
@@ -351,8 +363,12 @@ const ProgressOverview: React.FC = () => {
                 </div>
               </div>
               <button 
-                onClick={() => setShowAddGoal(true)}
+                onClick={() => {
+                  console.log('Add Goal button clicked');
+                  setShowAddGoal(true);
+                }}
                 className="btn-primary"
+                disabled={loading}
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Add Goal
@@ -461,8 +477,12 @@ const ProgressOverview: React.FC = () => {
                     No learning goals set yet
                   </p>
                   <button 
-                    onClick={() => setShowAddGoal(true)}
+                    onClick={() => {
+                      console.log('Set Your First Goal button clicked');
+                      setShowAddGoal(true);
+                    }}
                     className="btn-primary"
+                    disabled={loading}
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     Set Your First Goal
@@ -483,7 +503,18 @@ const ProgressOverview: React.FC = () => {
                     Add New Goal
                   </h4>
                   <button
-                    onClick={() => setShowAddGoal(false)}
+                    onClick={() => {
+                      console.log('Close add goal form');
+                      setShowAddGoal(false);
+                      // Reset form when closing
+                      setNewGoal({
+                        title: '',
+                        description: '',
+                        targetDate: '',
+                        relatedTopics: []
+                      });
+                      setError(null);
+                    }}
                     className={`p-1 rounded transition-colors ${
                       isDark 
                         ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-600' 
@@ -498,7 +529,10 @@ const ProgressOverview: React.FC = () => {
                   <input
                     type="text"
                     value={newGoal.title}
-                    onChange={(e) => setNewGoal({ ...newGoal, title: e.target.value })}
+                    onChange={(e) => {
+                      console.log('Title changed:', e.target.value);
+                      setNewGoal({ ...newGoal, title: e.target.value });
+                    }}
                     placeholder="Goal title (required)"
                     className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors ${
                       isDark 
@@ -542,7 +576,10 @@ const ProgressOverview: React.FC = () => {
                     {goalSuggestions.slice(0, 3).map((suggestion, index) => (
                       <button
                         key={index}
-                        onClick={() => setNewGoal({ ...newGoal, title: suggestion })}
+                        onClick={() => {
+                          console.log('Suggestion clicked:', suggestion);
+                          setNewGoal({ ...newGoal, title: suggestion });
+                        }}
                         disabled={loading}
                         className={`text-xs px-2 py-1 rounded transition-colors disabled:opacity-50 ${
                           isDark 
@@ -557,7 +594,17 @@ const ProgressOverview: React.FC = () => {
                   
                   <div className="flex justify-end space-x-3">
                     <button
-                      onClick={() => setShowAddGoal(false)}
+                      onClick={() => {
+                        console.log('Cancel button clicked');
+                        setShowAddGoal(false);
+                        setNewGoal({
+                          title: '',
+                          description: '',
+                          targetDate: '',
+                          relatedTopics: []
+                        });
+                        setError(null);
+                      }}
                       className={`px-4 py-2 font-medium transition-colors ${
                         isDark 
                           ? 'text-gray-300 hover:text-gray-100' 
@@ -568,7 +615,10 @@ const ProgressOverview: React.FC = () => {
                       Cancel
                     </button>
                     <button
-                      onClick={handleAddGoal}
+                      onClick={() => {
+                        console.log('Add Goal submit button clicked');
+                        handleAddGoal();
+                      }}
                       disabled={loading || !newGoal.title.trim()}
                       className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
                     >

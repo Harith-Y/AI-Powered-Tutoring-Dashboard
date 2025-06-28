@@ -143,18 +143,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const resetPassword = async (email: string) => {
     try {
-      // Get the current domain, but handle localhost specially
+      // For localhost development, don't specify a continue URL to avoid domain authorization issues
+      // Firebase will use the default behavior and send a generic reset email
       const currentDomain = window.location.origin;
       const isLocalhost = currentDomain.includes('localhost') || currentDomain.includes('127.0.0.1');
       
-      // For localhost, don't specify a continue URL to avoid domain authorization issues
-      // Firebase will use the default domain configured in the project
-      const actionCodeSettings = isLocalhost ? undefined : {
-        url: `${currentDomain}/auth`,
-        handleCodeInApp: false,
-      };
-
-      await sendPasswordResetEmail(auth, email, actionCodeSettings);
+      if (isLocalhost) {
+        // For localhost, send password reset without continue URL
+        await sendPasswordResetEmail(auth, email);
+      } else {
+        // For production domains, include the continue URL
+        const actionCodeSettings = {
+          url: `${currentDomain}/auth`,
+          handleCodeInApp: false,
+        };
+        await sendPasswordResetEmail(auth, email, actionCodeSettings);
+      }
     } catch (error) {
       console.error('Password reset error:', error);
       throw error;

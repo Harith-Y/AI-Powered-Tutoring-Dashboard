@@ -17,7 +17,8 @@ const ProgressOverview: React.FC = () => {
     deleteGoal,
     completeGoal,
     completeTopic,
-    refreshTopics
+    refreshTopics,
+    weeklyPlan
   } = useAuth();
   const { isDark } = useTheme();
   const [showAddGoal, setShowAddGoal] = useState(false);
@@ -174,7 +175,19 @@ const ProgressOverview: React.FC = () => {
     }
 
     try {
+      // Find all tasks associated with this goal
+      const associatedTasks = weeklyPlan.filter(task => task.goalId === goalId);
+      
+      // Delete the goal
       await deleteGoal(goalId);
+      
+      // Update tasks to remove the goal association
+      if (associatedTasks.length > 0) {
+        for (const task of associatedTasks) {
+          await updateWeeklyPlanItem(currentUser.uid, task.id, { goalId: undefined });
+        }
+      }
+      
       setSuccess('Goal deleted successfully!');
     } catch (error) {
       console.error('Error deleting goal:', error);
@@ -200,6 +213,33 @@ const ProgressOverview: React.FC = () => {
       setError('Failed to complete topic. Please try again.');
     }
   };
+
+  // Calculate goal-related stats
+  const getGoalStats = () => {
+    // Count tasks associated with each goal
+    const goalTaskCounts: Record<string, { total: number, completed: number }> = {};
+    
+    weeklyPlan.forEach(task => {
+      if (task.goalId) {
+        if (!goalTaskCounts[task.goalId]) {
+          goalTaskCounts[task.goalId] = { total: 0, completed: 0 };
+        }
+        goalTaskCounts[task.goalId].total++;
+        if (task.completed) {
+          goalTaskCounts[task.goalId].completed++;
+        }
+      }
+    });
+    
+    return {
+      goalsWithTasks: Object.keys(goalTaskCounts).length,
+      totalGoalTasks: Object.values(goalTaskCounts).reduce((sum, counts) => sum + counts.total, 0),
+      completedGoalTasks: Object.values(goalTaskCounts).reduce((sum, counts) => sum + counts.completed, 0),
+      goalTaskCounts
+    };
+  };
+
+  const goalStats = getGoalStats();
 
   const stats = [
     {
@@ -264,6 +304,11 @@ const ProgressOverview: React.FC = () => {
     'Build a portfolio project',
     'Master CSS Grid and Flexbox'
   ];
+
+  // Get tasks associated with a goal
+  const getGoalTasks = (goalId: string) => {
+    return weeklyPlan.filter(task => task.goalId === goalId);
+  };
 
   return (
     <div className={`space-y-8 transition-colors ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
@@ -377,95 +422,112 @@ const ProgressOverview: React.FC = () => {
             
             <div className="space-y-4 max-h-80 overflow-y-auto">
               {validLearningGoals.length ? (
-                validLearningGoals.map((goal) => (
-                  <div key={goal.id} className="group">
-                    <div className={`p-4 rounded-xl transition-all duration-300 border ${
-                      goal.isCompleted
-                        ? isDark 
-                          ? 'bg-emerald-900/20 border-emerald-700/50' 
-                          : 'bg-emerald-50 border-emerald-200'
-                        : isDark 
-                          ? 'bg-gray-700 border-gray-600 hover:border-indigo-500/50' 
-                          : 'bg-gray-50 border-gray-200 hover:border-indigo-200'
-                    }`}>
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1">
-                          <h4 className={`font-semibold mb-1 ${
-                            goal.isCompleted 
-                              ? isDark ? 'text-emerald-300 line-through' : 'text-emerald-700 line-through'
-                              : isDark ? 'text-gray-100' : 'text-gray-900'
-                          }`}>
-                            {goal.title}
-                          </h4>
-                          {goal.description && (
-                            <p className={`text-sm ${
-                              isDark ? 'text-gray-400' : 'text-gray-600'
+                validLearningGoals.map((goal) => {
+                  // Get tasks associated with this goal
+                  const goalTasks = getGoalTasks(goal.id);
+                  const hasAssociatedTasks = goalTasks.length > 0;
+                  const completedTasks = goalTasks.filter(t => t.completed).length;
+                  
+                  return (
+                    <div key={goal.id} className="group">
+                      <div className={`p-4 rounded-xl transition-all duration-300 border ${
+                        goal.isCompleted
+                          ? isDark 
+                            ? 'bg-emerald-900/20 border-emerald-700/50' 
+                            : 'bg-emerald-50 border-emerald-200'
+                          : isDark 
+                            ? 'bg-gray-700 border-gray-600 hover:border-indigo-500/50' 
+                            : 'bg-gray-50 border-gray-200 hover:border-indigo-200'
+                      }`}>
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <h4 className={`font-semibold mb-1 ${
+                              goal.isCompleted 
+                                ? isDark ? 'text-emerald-300 line-through' : 'text-emerald-700 line-through'
+                                : isDark ? 'text-gray-100' : 'text-gray-900'
                             }`}>
-                              {goal.description}
-                            </p>
-                          )}
-                          {goal.targetDate && (
-                            <div className={`flex items-center text-xs mt-2 ${
-                              isDark ? 'text-gray-500' : 'text-gray-500'
-                            }`}>
-                              <Calendar className="w-3 h-3 mr-1" />
-                              Target: {goal.targetDate.toLocaleDateString()}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex items-center space-x-2 ml-4">
-                          {!goal.isCompleted && (
-                            <button
-                              onClick={() => handleCompleteGoal(goal.id)}
-                              className={`p-1 rounded transition-colors ${
-                                isDark 
-                                  ? 'text-gray-400 hover:text-emerald-400 hover:bg-gray-600' 
-                                  : 'text-gray-400 hover:text-emerald-600 hover:bg-gray-100'
-                              }`}
-                              title="Mark as completed"
-                            >
-                              <CheckCircle className="w-4 h-4" />
-                            </button>
-                          )}
-                          <button
-                            onClick={() => handleDeleteGoal(goal.id)}
-                            className={`opacity-0 group-hover:opacity-100 p-1 rounded transition-all ${
-                              isDark 
-                                ? 'text-gray-400 hover:text-red-400 hover:bg-gray-600' 
-                                : 'text-gray-400 hover:text-red-600 hover:bg-gray-100'
-                            }`}
-                            title="Delete goal"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                      
-                      {!goal.isCompleted && (
-                        <div className="space-y-2">
-                          <div className={`w-full rounded-full h-2 transition-colors ${
-                            isDark ? 'bg-gray-600' : 'bg-gray-200'
-                          }`}>
-                            <div 
-                              className="bg-indigo-500 h-2 rounded-full transition-all duration-300"
-                              style={{ width: `${goal.progress}%` }}
-                            ></div>
-                          </div>
-                          <div className="flex justify-between text-xs">
-                            <span className={`transition-colors ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                              {goal.progress}% complete
-                            </span>
-                            {goal.isCompleted && (
-                              <span className="text-emerald-600 font-medium">
-                                ✓ Completed {goal.completedAt?.toLocaleDateString()}
-                              </span>
+                              {goal.title}
+                            </h4>
+                            {goal.description && (
+                              <p className={`text-sm ${
+                                isDark ? 'text-gray-400' : 'text-gray-600'
+                              }`}>
+                                {goal.description}
+                              </p>
+                            )}
+                            {goal.targetDate && (
+                              <div className={`flex items-center text-xs mt-2 ${
+                                isDark ? 'text-gray-500' : 'text-gray-500'
+                              }`}>
+                                <Calendar className="w-3 h-3 mr-1" />
+                                Target: {goal.targetDate.toLocaleDateString()}
+                              </div>
+                            )}
+                            
+                            {/* Associated Tasks */}
+                            {hasAssociatedTasks && (
+                              <div className={`flex items-center text-xs mt-2 ${
+                                isDark ? 'text-gray-400' : 'text-gray-500'
+                              }`}>
+                                <CheckCircle className="w-3 h-3 mr-1" />
+                                {completedTasks}/{goalTasks.length} tasks completed
+                              </div>
                             )}
                           </div>
+                          <div className="flex items-center space-x-2 ml-4">
+                            {!goal.isCompleted && (
+                              <button
+                                onClick={() => handleCompleteGoal(goal.id)}
+                                className={`p-1 rounded transition-colors ${
+                                  isDark 
+                                    ? 'text-gray-400 hover:text-emerald-400 hover:bg-gray-600' 
+                                    : 'text-gray-400 hover:text-emerald-600 hover:bg-gray-100'
+                                }`}
+                                title="Mark as completed"
+                              >
+                                <CheckCircle className="w-4 h-4" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleDeleteGoal(goal.id)}
+                              className={`opacity-0 group-hover:opacity-100 p-1 rounded transition-all ${
+                                isDark 
+                                  ? 'text-gray-400 hover:text-red-400 hover:bg-gray-600' 
+                                  : 'text-gray-400 hover:text-red-600 hover:bg-gray-100'
+                              }`}
+                              title="Delete goal"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
-                      )}
+                        
+                        {!goal.isCompleted && (
+                          <div className="space-y-2">
+                            <div className={`w-full rounded-full h-2 transition-colors ${
+                              isDark ? 'bg-gray-600' : 'bg-gray-200'
+                            }`}>
+                              <div 
+                                className="bg-indigo-500 h-2 rounded-full transition-all duration-300"
+                                style={{ width: `${goal.progress}%` }}
+                              ></div>
+                            </div>
+                            <div className="flex justify-between text-xs">
+                              <span className={`transition-colors ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                {goal.progress}% complete
+                              </span>
+                              {goal.isCompleted && (
+                                <span className="text-emerald-600 font-medium">
+                                  ✓ Completed {goal.completedAt?.toLocaleDateString()}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <div className="text-center py-8">
                   <Target className={`w-12 h-12 mx-auto mb-4 transition-colors ${
@@ -870,6 +932,106 @@ const ProgressOverview: React.FC = () => {
 
       {/* AI Recommendations Section */}
       <WhatsNext />
+
+      {/* Goal-Task Integration Stats */}
+      {goalStats.goalsWithTasks > 0 && (
+        <div className={`card transition-colors ${
+          isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+        }`}>
+          <div className="p-6">
+            <div className="flex items-center mb-6">
+              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center mr-4 shadow-lg">
+                <Target className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h2 className={`text-xl font-bold transition-colors ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
+                  Goal Progress Tracking
+                </h2>
+                <p className={`text-sm transition-colors ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                  {goalStats.goalsWithTasks} goals with {goalStats.totalGoalTasks} associated tasks
+                </p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+              <div className={`p-4 rounded-xl border transition-colors ${
+                isDark ? 'bg-indigo-900/20 border-indigo-700/50' : 'bg-indigo-50 border-indigo-200'
+              }`}>
+                <div className="text-center">
+                  <div className={`text-2xl font-bold transition-colors ${
+                    isDark ? 'text-indigo-300' : 'text-indigo-700'
+                  }`}>
+                    {goalStats.goalsWithTasks}
+                  </div>
+                  <div className={`text-sm transition-colors ${
+                    isDark ? 'text-indigo-400' : 'text-indigo-600'
+                  }`}>
+                    Goals with Tasks
+                  </div>
+                </div>
+              </div>
+              
+              <div className={`p-4 rounded-xl border transition-colors ${
+                isDark ? 'bg-emerald-900/20 border-emerald-700/50' : 'bg-emerald-50 border-emerald-200'
+              }`}>
+                <div className="text-center">
+                  <div className={`text-2xl font-bold transition-colors ${
+                    isDark ? 'text-emerald-300' : 'text-emerald-700'
+                  }`}>
+                    {goalStats.completedGoalTasks}/{goalStats.totalGoalTasks}
+                  </div>
+                  <div className={`text-sm transition-colors ${
+                    isDark ? 'text-emerald-400' : 'text-emerald-600'
+                  }`}>
+                    Tasks Completed
+                  </div>
+                </div>
+              </div>
+              
+              <div className={`p-4 rounded-xl border transition-colors ${
+                isDark ? 'bg-orange-900/20 border-orange-700/50' : 'bg-orange-50 border-orange-200'
+              }`}>
+                <div className="text-center">
+                  <div className={`text-2xl font-bold transition-colors ${
+                    isDark ? 'text-orange-300' : 'text-orange-700'
+                  }`}>
+                    {goalStats.totalGoalTasks > 0 
+                      ? Math.round((goalStats.completedGoalTasks / goalStats.totalGoalTasks) * 100) 
+                      : 0}%
+                  </div>
+                  <div className={`text-sm transition-colors ${
+                    isDark ? 'text-orange-400' : 'text-orange-600'
+                  }`}>
+                    Overall Completion
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className={`p-4 rounded-lg transition-colors ${
+              isDark ? 'bg-gray-700' : 'bg-gray-50'
+            }`}>
+              <p className={`text-sm transition-colors ${
+                isDark ? 'text-gray-300' : 'text-gray-700'
+              }`}>
+                <span className="font-medium">Pro Tip:</span> Link your tasks to specific learning goals in the Schedule Planner. 
+                As you complete tasks, your goal progress will automatically update, helping you stay on track and motivated.
+              </p>
+              <div className="flex justify-end mt-2">
+                <button
+                  onClick={() => window.location.href = '/schedule'}
+                  className={`flex items-center text-sm font-medium transition-colors ${
+                    isDark ? 'text-indigo-400 hover:text-indigo-300' : 'text-indigo-600 hover:text-indigo-800'
+                  }`}
+                >
+                  Go to Schedule Planner
+                  <ArrowRight className="w-4 h-4 ml-1" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Performance Analytics */}
       <div className={`card transition-colors ${

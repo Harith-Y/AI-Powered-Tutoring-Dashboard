@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Calendar, Clock, Brain, Target, Plus, Settings, Sparkles, CheckCircle, Circle, ArrowRight, Zap, AlertCircle } from 'lucide-react';
-import { WeeklyPlanItem } from '../../types';
+import { WeeklyPlanItem, LearningGoal } from '../../types';
 import { addWeeklyPlanItem, updateWeeklyPlanItem, deleteWeeklyPlanItem } from '../../services/firestore';
 import DragDropCalendar from './DragDropCalendar';
 import AvailabilitySetup from './AvailabilitySetup';
+import TaskForm from './TaskForm';
 
 interface UserAvailability {
   [key: string]: number; // day -> hours available
@@ -19,10 +20,11 @@ interface AIRecommendation {
   type: 'lesson' | 'practice' | 'project' | 'review';
   priority: 'low' | 'medium' | 'high';
   reasoning: string;
+  suggestedGoalId?: string; // Suggested goal to associate with
 }
 
 const AIWeeklyPlanner: React.FC = () => {
-  const { currentUser, userProfile, userProgress = [], weeklyPlan, userPreferences } = useAuth();
+  const { currentUser, userProfile, userProgress = [], weeklyPlan, userPreferences, learningGoals, updateGoal } = useAuth();
   const { isDark } = useTheme();
   const [availability, setAvailability] = useState<UserAvailability>({});
   const [showAvailabilitySetup, setShowAvailabilitySetup] = useState(false);
@@ -31,6 +33,7 @@ const AIWeeklyPlanner: React.FC = () => {
   const [selectedWeek, setSelectedWeek] = useState(new Date());
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [showAddTask, setShowAddTask] = useState(false);
 
   const weekDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
   const weekDayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -106,13 +109,14 @@ const AIWeeklyPlanner: React.FC = () => {
     const analysis = analyzeUserProgress();
     const skillLevel = userProfile?.skillLevel || 'beginner';
     const preferredTopics = userProfile?.preferredTopics || ['JavaScript', 'React', 'CSS'];
-    const learningGoals = userProfile?.learningGoals || [];
+    const activeGoals = learningGoals.filter(goal => !goal.isCompleted);
 
     console.log('Generating AI recommendations with:', {
       skillLevel,
       preferredTopics,
       completedTopics: analysis.completedTopics.length,
-      averageScore: analysis.averageScore
+      averageScore: analysis.averageScore,
+      activeGoals: activeGoals.length
     });
 
     const recommendations: AIRecommendation[] = [];
@@ -173,6 +177,14 @@ const AIWeeklyPlanner: React.FC = () => {
         });
 
         if (nextTopic) {
+          // Find a relevant goal to associate with this topic
+          const relevantGoal = activeGoals.find(goal => 
+            goal.title.toLowerCase().includes(topic.toLowerCase()) || 
+            (goal.relatedTopics && goal.relatedTopics.some(t => 
+              t.toLowerCase().includes(topic.toLowerCase())
+            ))
+          );
+
           recommendations.push({
             topic: nextTopic.name,
             description: `Master ${nextTopic.name} to advance your ${topic} skills. This builds on your existing knowledge and prepares you for more advanced concepts.`,
@@ -180,7 +192,8 @@ const AIWeeklyPlanner: React.FC = () => {
             difficulty: mapDifficultyToWeeklyPlan(nextTopic.difficulty),
             type: nextTopic.type as any,
             priority: 'high',
-            reasoning: `Based on your ${skillLevel} level and interest in ${topic}, this is the next logical step in your learning progression.`
+            reasoning: `Based on your ${skillLevel} level and interest in ${topic}, this is the next logical step in your learning progression.`,
+            suggestedGoalId: relevantGoal?.id
           });
         }
       }
@@ -189,6 +202,15 @@ const AIWeeklyPlanner: React.FC = () => {
     // Add review sessions for weak areas
     if (analysis.weakAreas.length > 0) {
       const weakArea = analysis.weakAreas[0]; // Focus on the first weak area
+      
+      // Find a goal related to this weak area
+      const relevantGoal = activeGoals.find(goal => 
+        goal.title.toLowerCase().includes(weakArea.toLowerCase()) ||
+        (goal.relatedTopics && goal.relatedTopics.some(t => 
+          t.toLowerCase().includes(weakArea.toLowerCase())
+        ))
+      );
+      
       recommendations.push({
         topic: `Review: ${weakArea}`,
         description: `Strengthen your understanding of ${weakArea} concepts with focused practice and review.`,
@@ -196,13 +218,22 @@ const AIWeeklyPlanner: React.FC = () => {
         difficulty: 'medium',
         type: 'review',
         priority: 'high',
-        reasoning: `Your previous score in ${weakArea} was below 70%. Review sessions help solidify understanding.`
+        reasoning: `Your previous score in ${weakArea} was below 70%. Review sessions help solidify understanding.`,
+        suggestedGoalId: relevantGoal?.id
       });
     }
 
     // Add practice projects for skill application
     if (analysis.totalTopics >= 3) {
       const projectTopics = preferredTopics.slice(0, 2);
+      
+      // Find a project-related goal
+      const projectGoal = activeGoals.find(goal => 
+        goal.title.toLowerCase().includes('project') ||
+        goal.title.toLowerCase().includes('build') ||
+        goal.title.toLowerCase().includes('create')
+      );
+      
       recommendations.push({
         topic: `${projectTopics.join(' & ')} Practice Project`,
         description: `Build a hands-on project combining ${projectTopics.join(' and ')} to reinforce your learning and create portfolio content.`,
@@ -210,12 +241,20 @@ const AIWeeklyPlanner: React.FC = () => {
         difficulty: skillLevel === 'beginner' ? 'medium' : 'hard',
         type: 'project',
         priority: 'medium',
-        reasoning: 'Practical application through projects helps consolidate learning and builds your portfolio.'
+        reasoning: 'Practical application through projects helps consolidate learning and builds your portfolio.',
+        suggestedGoalId: projectGoal?.id
       });
     }
 
     // Add skill-appropriate challenges
     if (skillLevel !== 'beginner' && analysis.averageScore >= 75) {
+      // Find a challenge or practice-related goal
+      const practiceGoal = activeGoals.find(goal => 
+        goal.title.toLowerCase().includes('practice') ||
+        goal.title.toLowerCase().includes('challenge') ||
+        goal.title.toLowerCase().includes('problem')
+      );
+      
       recommendations.push({
         topic: 'Coding Challenge Practice',
         description: 'Solve algorithm and data structure problems to improve problem-solving skills and prepare for technical interviews.',
@@ -223,7 +262,8 @@ const AIWeeklyPlanner: React.FC = () => {
         difficulty: skillLevel === 'intermediate' ? 'medium' : 'hard',
         type: 'practice',
         priority: 'medium',
-        reasoning: 'Regular coding challenges maintain and improve problem-solving abilities.'
+        reasoning: 'Regular coding challenges maintain and improve problem-solving abilities.',
+        suggestedGoalId: practiceGoal?.id
       });
     }
 
@@ -237,7 +277,8 @@ const AIWeeklyPlanner: React.FC = () => {
           difficulty: 'easy' as const,
           type: 'lesson' as const,
           priority: 'high' as const,
-          reasoning: 'JavaScript is fundamental to web development and forms the basis for learning other technologies.'
+          reasoning: 'JavaScript is fundamental to web development and forms the basis for learning other technologies.',
+          suggestedGoalId: activeGoals.find(g => g.title.toLowerCase().includes('javascript'))?.id
         },
         {
           topic: 'HTML & CSS Basics',
@@ -246,7 +287,8 @@ const AIWeeklyPlanner: React.FC = () => {
           difficulty: 'easy' as const,
           type: 'lesson' as const,
           priority: 'high' as const,
-          reasoning: 'Essential foundation for all web development work.'
+          reasoning: 'Essential foundation for all web development work.',
+          suggestedGoalId: activeGoals.find(g => g.title.toLowerCase().includes('css') || g.title.toLowerCase().includes('html'))?.id
         }
       ];
       recommendations.push(...generalRecommendations);
@@ -313,7 +355,8 @@ const AIWeeklyPlanner: React.FC = () => {
         difficulty: rec.difficulty,
         type: rec.type,
         completed: false,
-        priority: rec.priority
+        priority: rec.priority,
+        goalId: rec.suggestedGoalId // Link to suggested goal if available
       };
 
       tasks.push(task);
@@ -369,6 +412,20 @@ const AIWeeklyPlanner: React.FC = () => {
       for (const task of distributedTasks) {
         try {
           await addWeeklyPlanItem(currentUser.uid, task);
+          
+          // If task is linked to a goal, update goal progress
+          if (task.goalId) {
+            // Get all tasks for this goal
+            const goalTasks = weeklyPlan.filter(t => t.goalId === task.goalId);
+            const completedTasks = goalTasks.filter(t => t.completed);
+            const progressPercentage = goalTasks.length > 0 
+              ? Math.round((completedTasks.length / (goalTasks.length + 1)) * 100) 
+              : 0;
+            
+            // Update goal progress
+            await updateGoal(task.goalId, { progress: progressPercentage });
+          }
+          
           addedCount++;
         } catch (taskError) {
           console.error('Error adding individual task:', taskError);
@@ -392,7 +449,24 @@ const AIWeeklyPlanner: React.FC = () => {
   const handleTaskUpdate = async (taskId: string, updates: Partial<WeeklyPlanItem>) => {
     if (!currentUser) return;
     try {
+      // Get the task before update
+      const oldTask = weeklyPlan.find(t => t.id === taskId);
+      const oldGoalId = oldTask?.goalId;
+      
       await updateWeeklyPlanItem(currentUser.uid, taskId, updates);
+      
+      // If completion status changed or goal association changed, update goal progress
+      if (updates.completed !== undefined || updates.goalId !== undefined) {
+        // Update old goal progress if there was one
+        if (oldGoalId) {
+          updateGoalProgressFromTasks(oldGoalId);
+        }
+        
+        // Update new goal progress if there is one and it's different from the old one
+        if (updates.goalId && updates.goalId !== oldGoalId) {
+          updateGoalProgressFromTasks(updates.goalId);
+        }
+      }
     } catch (error) {
       console.error('Error updating task:', error);
       setError('Failed to update task');
@@ -402,11 +476,71 @@ const AIWeeklyPlanner: React.FC = () => {
   const handleTaskDelete = async (taskId: string) => {
     if (!currentUser) return;
     try {
+      // Get the task before deleting
+      const task = weeklyPlan.find(t => t.id === taskId);
+      const goalId = task?.goalId;
+      
       await deleteWeeklyPlanItem(currentUser.uid, taskId);
+      
+      // If task was linked to a goal, update goal progress
+      if (goalId) {
+        updateGoalProgressFromTasks(goalId);
+      }
+      
       setSuccess('Task deleted successfully');
     } catch (error) {
       console.error('Error deleting task:', error);
       setError('Failed to delete task');
+    }
+  };
+
+  // Function to update goal progress based on all associated tasks
+  const updateGoalProgressFromTasks = (goalId: string) => {
+    // Get all tasks for this goal
+    const goalTasks = weeklyPlan.filter(t => t.goalId === goalId);
+    
+    if (goalTasks.length === 0) {
+      // No tasks associated with this goal anymore
+      updateGoal(goalId, { progress: 0 }).catch(console.error);
+      return;
+    }
+    
+    // Calculate progress percentage
+    const completedTasks = goalTasks.filter(t => t.completed);
+    const progressPercentage = Math.round((completedTasks.length / goalTasks.length) * 100);
+    
+    // Update goal progress
+    updateGoal(goalId, { progress: progressPercentage }).catch(console.error);
+    
+    // If all tasks are completed, mark goal as complete
+    if (progressPercentage === 100) {
+      const goal = learningGoals.find(g => g.id === goalId);
+      if (goal && !goal.isCompleted) {
+        const { completeGoal } = useAuth();
+        completeGoal(goalId).catch(console.error);
+      }
+    }
+  };
+
+  const handleAddTask = async (taskData: Omit<WeeklyPlanItem, 'id'>) => {
+    if (!currentUser) {
+      setError('Please log in to add tasks');
+      return;
+    }
+    
+    try {
+      const taskId = await addWeeklyPlanItem(currentUser.uid, taskData);
+      
+      // If task is linked to a goal, update goal progress
+      if (taskData.goalId) {
+        updateGoalProgressFromTasks(taskData.goalId);
+      }
+      
+      setSuccess('Task added successfully!');
+      setShowAddTask(false);
+    } catch (error) {
+      console.error('Error adding task:', error);
+      setError('Failed to add task. Please try again.');
     }
   };
 
@@ -618,12 +752,12 @@ const AIWeeklyPlanner: React.FC = () => {
               <div className={`text-sm font-medium transition-colors ${
                 isDark ? 'text-purple-300' : 'text-purple-800'
               }`}>
-                Preferred Topics
+                Active Learning Goals
               </div>
               <div className={`text-sm transition-colors ${
                 isDark ? 'text-purple-400' : 'text-purple-700'
               }`}>
-                {(userProfile?.preferredTopics || ['JavaScript', 'React', 'CSS']).slice(0, 2).join(', ')}
+                {learningGoals.filter(g => !g.isCompleted).length} goals
               </div>
             </div>
           </div>
@@ -653,8 +787,50 @@ const AIWeeklyPlanner: React.FC = () => {
               Set your availability first to generate a plan
             </p>
           )}
+          
+          <div className="mt-4">
+            <button
+              onClick={() => setShowAddTask(true)}
+              className="w-full flex items-center justify-center px-4 py-2 border border-indigo-500 text-indigo-600 dark:text-indigo-400 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Task Manually
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Manual Task Form */}
+      {showAddTask && (
+        <div className={`rounded-xl shadow-sm border p-6 transition-colors ${
+          isDark 
+            ? 'bg-gray-800 border-gray-700' 
+            : 'bg-white border-gray-200'
+        }`}>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className={`text-lg font-semibold transition-colors ${
+              isDark ? 'text-gray-100' : 'text-gray-900'
+            }`}>
+              Add Task Manually
+            </h3>
+            <button
+              onClick={() => setShowAddTask(false)}
+              className={`p-1 rounded transition-colors ${
+                isDark 
+                  ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700' 
+                  : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          
+          <TaskForm
+            onSubmit={handleAddTask}
+            onCancel={() => setShowAddTask(false)}
+          />
+        </div>
+      )}
 
       {/* AI Recommendations Preview */}
       {aiRecommendations.length > 0 && (
@@ -671,47 +847,64 @@ const AIWeeklyPlanner: React.FC = () => {
           </h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {aiRecommendations.map((rec, index) => (
-              <div key={index} className={`p-4 border rounded-lg hover:border-indigo-300 transition-colors ${
-                isDark 
-                  ? 'border-gray-600 hover:border-indigo-500/50' 
-                  : 'border-gray-200 hover:border-indigo-300'
-              }`}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    rec.priority === 'high' 
-                      ? isDark ? 'bg-red-900/30 text-red-300' : 'bg-red-100 text-red-700'
-                      : rec.priority === 'medium' 
-                      ? isDark ? 'bg-orange-900/30 text-orange-300' : 'bg-orange-100 text-orange-700'
-                      : isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'
+            {aiRecommendations.map((rec, index) => {
+              // Find the goal if one was suggested
+              const suggestedGoal = rec.suggestedGoalId 
+                ? learningGoals.find(g => g.id === rec.suggestedGoalId) 
+                : null;
+              
+              return (
+                <div key={index} className={`p-4 border rounded-lg hover:border-indigo-300 transition-colors ${
+                  isDark 
+                    ? 'border-gray-600 hover:border-indigo-500/50' 
+                    : 'border-gray-200 hover:border-indigo-300'
+                }`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      rec.priority === 'high' 
+                        ? isDark ? 'bg-red-900/30 text-red-300' : 'bg-red-100 text-red-700'
+                        : rec.priority === 'medium' 
+                        ? isDark ? 'bg-orange-900/30 text-orange-300' : 'bg-orange-100 text-orange-700'
+                        : isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'
+                    }`}>
+                      {rec.priority} priority
+                    </span>
+                    <span className={`text-sm transition-colors ${
+                      isDark ? 'text-gray-400' : 'text-gray-500'
+                    }`}>
+                      {rec.estimatedTime}m
+                    </span>
+                  </div>
+                  
+                  <h4 className={`font-medium mb-2 transition-colors ${
+                    isDark ? 'text-gray-100' : 'text-gray-900'
                   }`}>
-                    {rec.priority} priority
-                  </span>
-                  <span className={`text-sm transition-colors ${
-                    isDark ? 'text-gray-400' : 'text-gray-500'
+                    {rec.topic}
+                  </h4>
+                  <p className={`text-sm mb-3 transition-colors ${
+                    isDark ? 'text-gray-400' : 'text-gray-600'
                   }`}>
-                    {rec.estimatedTime}m
-                  </span>
+                    {rec.description}
+                  </p>
+                  
+                  {/* Show suggested goal if available */}
+                  {suggestedGoal && (
+                    <div className={`flex items-center mb-3 text-sm ${
+                      isDark ? 'text-indigo-400' : 'text-indigo-600'
+                    }`}>
+                      <Target className="w-4 h-4 mr-1" />
+                      <span>Linked to goal: {suggestedGoal.title}</span>
+                    </div>
+                  )}
+                  
+                  <div className={`text-xs rounded p-2 transition-colors ${
+                    isDark ? 'text-gray-400 bg-gray-700' : 'text-gray-500 bg-gray-50'
+                  }`}>
+                    <strong>AI Reasoning:</strong> {rec.reasoning}
+                  </div>
                 </div>
-                
-                <h4 className={`font-medium mb-2 transition-colors ${
-                  isDark ? 'text-gray-100' : 'text-gray-900'
-                }`}>
-                  {rec.topic}
-                </h4>
-                <p className={`text-sm mb-3 transition-colors ${
-                  isDark ? 'text-gray-400' : 'text-gray-600'
-                }`}>
-                  {rec.description}
-                </p>
-                
-                <div className={`text-xs rounded p-2 transition-colors ${
-                  isDark ? 'text-gray-400 bg-gray-700' : 'text-gray-500 bg-gray-50'
-                }`}>
-                  <strong>AI Reasoning:</strong> {rec.reasoning}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

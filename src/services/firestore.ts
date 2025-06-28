@@ -1340,7 +1340,127 @@ export const initializeSampleData = async (uid: string) => {
       console.log('Firestore: Added sample progress data');
     }
 
+    // Add sample learning goals
+    const existingGoals = await getLearningGoals(uid);
+    if (existingGoals.length === 0) {
+      const sampleGoals = [
+        {
+          title: "Master React Fundamentals",
+          description: "Learn core React concepts and build a small project",
+          targetDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+          isCompleted: false,
+          progress: 0,
+          relatedTopics: ["React", "JavaScript"]
+        },
+        {
+          title: "Complete 5 CSS Challenges",
+          description: "Practice advanced CSS techniques through challenges",
+          targetDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days from now
+          isCompleted: false,
+          progress: 0,
+          relatedTopics: ["CSS"]
+        }
+      ];
+      
+      for (const goal of sampleGoals) {
+        await addLearningGoal(uid, goal);
+      }
+      console.log('Firestore: Added sample learning goals');
+    }
+
+    // Add sample weekly plan items
+    const existingPlan = await getWeeklyPlan(uid);
+    if (existingPlan.length === 0) {
+      // Get the goal IDs to link tasks to goals
+      const goals = await getLearningGoals(uid);
+      const reactGoalId = goals.find(g => g.title.includes("React"))?.id;
+      const cssGoalId = goals.find(g => g.title.includes("CSS"))?.id;
+      
+      const today = new Date();
+      const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+      const weekDays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      
+      // Create tasks for the current week
+      const sampleTasks = [
+        {
+          day: weekDays[(dayOfWeek + 1) % 7], // Tomorrow
+          topic: "React Components and Props",
+          description: "Learn about React components and how to pass data with props",
+          estimatedTime: 60,
+          difficulty: "medium" as const,
+          type: "lesson" as const,
+          completed: false,
+          priority: "high" as const,
+          goalId: reactGoalId
+        },
+        {
+          day: weekDays[(dayOfWeek + 3) % 7], // 3 days from now
+          topic: "CSS Flexbox Layout Challenge",
+          description: "Complete a flexbox layout challenge to practice positioning",
+          estimatedTime: 45,
+          difficulty: "medium" as const,
+          type: "practice" as const,
+          completed: false,
+          priority: "medium" as const,
+          goalId: cssGoalId
+        }
+      ];
+      
+      for (const task of sampleTasks) {
+        await addWeeklyPlanItem(uid, task);
+      }
+      console.log('Firestore: Added sample weekly plan tasks');
+    }
+
   } catch (error) {
     console.error('Firestore: Error initializing sample data:', error);
+  }
+};
+
+// Function to update goal progress based on associated tasks
+export const updateGoalProgressFromTasks = async (uid: string, goalId: string) => {
+  try {
+    console.log('Firestore: Updating goal progress from tasks for goal:', goalId);
+    
+    // Get all tasks for this goal
+    const weeklyPlanRef = collection(db, 'users', uid, 'weekly_plan');
+    const q = query(weeklyPlanRef, where('goalId', '==', goalId));
+    const querySnapshot = await getDocs(q);
+    
+    const goalTasks = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as WeeklyPlanItem[];
+    
+    if (goalTasks.length === 0) {
+      // No tasks associated with this goal
+      await updateLearningGoal(uid, goalId, { progress: 0 });
+      return;
+    }
+    
+    // Calculate progress percentage
+    const completedTasks = goalTasks.filter(task => task.completed);
+    const progressPercentage = Math.round((completedTasks.length / goalTasks.length) * 100);
+    
+    // Update goal progress
+    await updateLearningGoal(uid, goalId, { progress: progressPercentage });
+    
+    // If all tasks are completed, mark goal as complete
+    if (progressPercentage === 100) {
+      const goalRef = doc(db, 'users', uid, 'learning_goals', goalId);
+      const goalSnap = await getDoc(goalRef);
+      
+      if (goalSnap.exists() && !goalSnap.data().isCompleted) {
+        await updateLearningGoal(uid, goalId, { 
+          isCompleted: true,
+          completedAt: new Date(),
+          progress: 100
+        });
+      }
+    }
+    
+    console.log('Firestore: Updated goal progress to', progressPercentage, '%');
+  } catch (error) {
+    console.error('Firestore: Error updating goal progress from tasks:', error);
   }
 };

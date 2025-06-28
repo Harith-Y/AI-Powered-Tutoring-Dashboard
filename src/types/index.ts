@@ -67,6 +67,7 @@ export interface WeeklyPlanItem {
   completed: boolean;
   scheduledTime?: string; // '09:00', '14:30', etc.
   priority: 'low' | 'medium' | 'high';
+  goalId?: string; // Reference to the associated learning goal
 }
 
 export interface ChatMessage {

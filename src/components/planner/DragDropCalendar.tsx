@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Clock, CheckCircle, Circle, Trash2, Edit, GripVertical } from 'lucide-react';
+import { Clock, CheckCircle, Circle, Trash2, Edit, GripVertical, Target } from 'lucide-react';
 import { WeeklyPlanItem } from '../../types';
+import { useAuth } from '../../context/AuthContext';
 
 interface DragDropCalendarProps {
   tasks: WeeklyPlanItem[];
@@ -15,6 +16,7 @@ const DragDropCalendar: React.FC<DragDropCalendarProps> = ({
   onTaskUpdate,
   onTaskDelete
 }) => {
+  const { learningGoals } = useAuth();
   const [draggedTask, setDraggedTask] = useState<WeeklyPlanItem | null>(null);
   const [dragOverDay, setDragOverDay] = useState<string | null>(null);
 
@@ -74,6 +76,13 @@ const DragDropCalendar: React.FC<DragDropCalendarProps> = ({
     const totalTime = dayTasks.reduce((sum, task) => sum + task.estimatedTime, 0);
     const availableTime = (availability[day] || 0) * 60; // Convert hours to minutes
     return availableTime > 0 ? (totalTime / availableTime) * 100 : 0;
+  };
+
+  // Get goal title by ID
+  const getGoalTitle = (goalId?: string) => {
+    if (!goalId) return null;
+    const goal = learningGoals.find(g => g.id === goalId);
+    return goal ? goal.title : null;
   };
 
   return (
@@ -192,6 +201,14 @@ const DragDropCalendar: React.FC<DragDropCalendarProps> = ({
                       <p className="text-xs text-gray-600 mb-2 line-clamp-2">
                         {task.description}
                       </p>
+                    )}
+
+                    {/* Associated Goal */}
+                    {task.goalId && getGoalTitle(task.goalId) && (
+                      <div className="flex items-center mb-2 text-xs text-indigo-600">
+                        <Target className="w-3 h-3 mr-1" />
+                        <span className="truncate">{getGoalTitle(task.goalId)}</span>
+                      </div>
                     )}
 
                     <div className="flex items-center justify-between">

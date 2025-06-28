@@ -64,6 +64,11 @@ export const addLearningGoal = async (uid: string, goal: LearningGoal) => {
 };
 
 export const updateLearningGoal = async (uid: string, goalId: string, updates: Partial<LearningGoal>) => {
+  // Validate goalId parameter
+  if (!goalId || typeof goalId !== 'string' || goalId.trim() === '') {
+    throw new Error('Invalid goalId: goalId must be a non-empty string');
+  }
+
   const goalRef = doc(db, 'users', uid, 'learning_goals', goalId);
   await updateDoc(goalRef, {
     ...updates,

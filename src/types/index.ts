@@ -76,6 +76,18 @@ export interface ChatMessage {
   sender: 'user' | 'ai';
   timestamp: Date;
   adaptedToLevel?: boolean;
+  memoryEnhanced?: boolean;
+  mistralPowered?: boolean;
+}
+
+export interface ChatSession {
+  id: string;
+  userId: string;
+  title: string;
+  messages: ChatMessage[];
+  createdAt: Date;
+  updatedAt: Date;
+  messageCount: number;
 }
 
 export interface ScheduleTask {

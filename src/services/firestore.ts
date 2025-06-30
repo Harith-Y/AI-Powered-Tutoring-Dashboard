@@ -10,11 +10,12 @@ import {
   query, 
   where, 
   orderBy, 
+  limit,
   Timestamp,
   writeBatch
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { User, UserPreferences, Progress, WeeklyPlanItem, LearningGoal, Topic } from '../types';
+import { User, UserPreferences, Progress, WeeklyPlanItem, LearningGoal, Topic, ChatMessage, ChatSession } from '../types';
 
 // User Profile Operations
 export const createUserProfile = async (userId: string, userData: Omit<User, 'id' | 'createdAt' | 'lastLoginAt'>) => {
@@ -358,6 +359,160 @@ export const subscribeToLearningGoals = (userId: string, callback: (goals: Learn
     console.error('Firestore: Error in learning goals subscription:', error);
     callback([]);
   });
+};
+
+// Chat History Operations
+export const createChatSession = async (userId: string, title?: string): Promise<string> => {
+  try {
+    console.log('Firestore: Creating new chat session for user:', userId);
+    
+    const chatSessionsRef = collection(db, 'users', userId, 'chat_sessions');
+    const sessionData = {
+      userId,
+      title: title || `Chat Session ${new Date().toLocaleDateString()}`,
+      messageCount: 0,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    };
+    
+    const docRef = await addDoc(chatSessionsRef, sessionData);
+    console.log('Firestore: Chat session created with ID:', docRef.id);
+    return docRef.id;
+  } catch (error) {
+    console.error('Firestore: Error creating chat session:', error);
+    throw error;
+  }
+};
+
+export const addChatMessage = async (
+  userId: string, 
+  sessionId: string, 
+  messageData: Omit<ChatMessage, 'id' | 'timestamp'>
+): Promise<string> => {
+  try {
+    console.log('Firestore: Adding chat message to session:', sessionId);
+    
+    const messagesRef = collection(db, 'users', userId, 'chat_sessions', sessionId, 'messages');
+    const message = {
+      ...messageData,
+      timestamp: Timestamp.now()
+    };
+    
+    const docRef = await addDoc(messagesRef, message);
+    
+    // Update session's message count and last updated time
+    const sessionRef = doc(db, 'users', userId, 'chat_sessions', sessionId);
+    await updateDoc(sessionRef, {
+      messageCount: (await getDoc(sessionRef)).data()?.messageCount + 1 || 1,
+      updatedAt: Timestamp.now()
+    });
+    
+    console.log('Firestore: Chat message added with ID:', docRef.id);
+    return docRef.id;
+  } catch (error) {
+    console.error('Firestore: Error adding chat message:', error);
+    throw error;
+  }
+};
+
+export const getChatSessions = async (userId: string): Promise<ChatSession[]> => {
+  try {
+    console.log('Firestore: Getting chat sessions for user:', userId);
+    
+    const chatSessionsRef = collection(db, 'users', userId, 'chat_sessions');
+    const q = query(chatSessionsRef, orderBy('updatedAt', 'desc'), limit(10));
+    const snapshot = await getDocs(q);
+    
+    const sessions = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        userId: data.userId,
+        title: data.title,
+        messageCount: data.messageCount || 0,
+        messages: [], // Messages will be loaded separately
+        createdAt: data.createdAt?.toDate() || new Date(),
+        updatedAt: data.updatedAt?.toDate() || new Date()
+      } as ChatSession;
+    });
+    
+    console.log('Firestore: Found', sessions.length, 'chat sessions');
+    return sessions;
+  } catch (error) {
+    console.error('Firestore: Error getting chat sessions:', error);
+    return [];
+  }
+};
+
+export const getChatMessages = async (userId: string, sessionId: string): Promise<ChatMessage[]> => {
+  try {
+    console.log('Firestore: Getting chat messages for session:', sessionId);
+    
+    const messagesRef = collection(db, 'users', userId, 'chat_sessions', sessionId, 'messages');
+    const q = query(messagesRef, orderBy('timestamp', 'asc'));
+    const snapshot = await getDocs(q);
+    
+    const messages = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        content: data.content,
+        sender: data.sender,
+        timestamp: data.timestamp?.toDate() || new Date(),
+        adaptedToLevel: data.adaptedToLevel || false,
+        memoryEnhanced: data.memoryEnhanced || false,
+        mistralPowered: data.mistralPowered || false
+      } as ChatMessage;
+    });
+    
+    console.log('Firestore: Found', messages.length, 'messages in session');
+    return messages;
+  } catch (error) {
+    console.error('Firestore: Error getting chat messages:', error);
+    return [];
+  }
+};
+
+export const deleteChatSession = async (userId: string, sessionId: string) => {
+  try {
+    console.log('Firestore: Deleting chat session:', sessionId);
+    
+    // Delete all messages in the session first
+    const messagesRef = collection(db, 'users', userId, 'chat_sessions', sessionId, 'messages');
+    const messagesSnapshot = await getDocs(messagesRef);
+    
+    const batch = writeBatch(db);
+    messagesSnapshot.docs.forEach(doc => {
+      batch.delete(doc.ref);
+    });
+    
+    // Delete the session document
+    const sessionRef = doc(db, 'users', userId, 'chat_sessions', sessionId);
+    batch.delete(sessionRef);
+    
+    await batch.commit();
+    console.log('Firestore: Chat session and messages deleted successfully');
+  } catch (error) {
+    console.error('Firestore: Error deleting chat session:', error);
+    throw error;
+  }
+};
+
+export const updateChatSessionTitle = async (userId: string, sessionId: string, title: string) => {
+  try {
+    console.log('Firestore: Updating chat session title:', sessionId, title);
+    
+    const sessionRef = doc(db, 'users', userId, 'chat_sessions', sessionId);
+    await updateDoc(sessionRef, {
+      title,
+      updatedAt: Timestamp.now()
+    });
+    
+    console.log('Firestore: Chat session title updated successfully');
+  } catch (error) {
+    console.error('Firestore: Error updating chat session title:', error);
+    throw error;
+  }
 };
 
 // Weekly Stats

@@ -449,7 +449,15 @@ const AIWeeklyPlanner: React.FC = () => {
 
   const handleTaskUpdate = async (taskId: string, updates: Partial<WeeklyPlanItem>) => {
     if (!currentUser) return;
+    
     try {
+      // Check if the task still exists in our local state
+      const taskExists = weeklyPlan.find(t => t.id === taskId);
+      if (!taskExists) {
+        console.warn(`Task ${taskId} not found in local state, skipping update`);
+        return;
+      }
+
       // Get the task before update
       const oldTask = weeklyPlan.find(t => t.id === taskId);
       const oldGoalId = oldTask?.goalId;
@@ -468,18 +476,35 @@ const AIWeeklyPlanner: React.FC = () => {
           updateGoalProgressFromTasks(updates.goalId);
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating task:', error);
-      setError('Failed to update task');
+      
+      // Check if the error indicates the document doesn't exist
+      if (error?.message?.includes('No document to update') || 
+          error?.code === 'not-found' ||
+          error?.message?.includes('not found')) {
+        console.warn(`Task ${taskId} no longer exists in Firestore, it may have been deleted elsewhere`);
+        // Don't show error to user - let Firestore subscription handle state sync
+        return;
+      }
+      
+      // For other errors, show user-friendly message
+      setError('Failed to update task. Please try again.');
     }
   };
 
   const handleTaskDelete = async (taskId: string) => {
     if (!currentUser) return;
+    
     try {
-      // Get the task before deleting
+      // Check if the task exists in our local state
       const task = weeklyPlan.find(t => t.id === taskId);
-      const goalId = task?.goalId;
+      if (!task) {
+        console.warn(`Task ${taskId} not found in local state, may already be deleted`);
+        return;
+      }
+      
+      const goalId = task.goalId;
       
       await deleteWeeklyPlanItem(currentUser.uid, taskId);
       
@@ -489,9 +514,21 @@ const AIWeeklyPlanner: React.FC = () => {
       }
       
       setSuccess('Task deleted successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting task:', error);
-      setError('Failed to delete task');
+      
+      // Check if the error indicates the document doesn't exist
+      if (error?.message?.includes('No document to update') || 
+          error?.code === 'not-found' ||
+          error?.message?.includes('not found')) {
+        console.warn(`Task ${taskId} was already deleted from Firestore`);
+        // Still show success message since the task is effectively deleted
+        setSuccess('Task deleted successfully');
+        return;
+      }
+      
+      // For other errors, show user-friendly message
+      setError('Failed to delete task. Please try again.');
     }
   };
 

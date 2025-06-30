@@ -1,14 +1,15 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { BarChart3, MessageCircle, Calendar, BookOpen, Brain, TrendingUp, Sparkles, Home } from 'lucide-react';
+import { BarChart3, MessageCircle, Calendar, BookOpen, Brain, TrendingUp, Sparkles, Home, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const Navigation: React.FC = () => {
   const { userProfile } = useAuth();
   const { isDark } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const tabs = [
     { id: '/', label: 'Home', icon: Home, color: 'from-gray-500 to-gray-600' },
@@ -22,6 +23,18 @@ const Navigation: React.FC = () => {
 
   const handleNavigation = (path: string) => {
     navigate(path);
+  };
+
+  const scrollLeft = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: -200, behavior: 'smooth' });
+    }
+  };
+
+  const scrollRight = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: 200, behavior: 'smooth' });
+    }
   };
 
   return (
@@ -51,13 +64,29 @@ const Navigation: React.FC = () => {
         </div>
       </div>
 
-      {/* Tab Navigation */}
-      <div className={`rounded-xl sm:rounded-2xl shadow-lg border p-1 sm:p-2 transition-colors ${
+      {/* Tab Navigation with Horizontal Slider */}
+      <div className={`rounded-xl sm:rounded-2xl shadow-lg border p-1 sm:p-2 transition-colors relative ${
         isDark 
           ? 'bg-gray-800 border-gray-700' 
           : 'bg-white border-gray-100'
       }`}>
-        <div className="flex overflow-x-auto scrollbar-hide">
+        {/* Left Scroll Button */}
+        <button 
+          onClick={scrollLeft}
+          className={`absolute left-0 top-1/2 transform -translate-y-1/2 z-10 p-1 rounded-full shadow-md ${
+            isDark 
+              ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
+              : 'bg-white text-gray-600 hover:bg-gray-50'
+          }`}
+          aria-label="Scroll left"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+
+        <div 
+          ref={scrollContainerRef}
+          className="flex overflow-x-auto scrollbar-hide px-6 scroll-smooth"
+        >
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = location.pathname === tab.id;
@@ -65,7 +94,7 @@ const Navigation: React.FC = () => {
               <button
                 key={tab.id}
                 onClick={() => handleNavigation(tab.id)}
-                className={`flex items-center px-3 py-2 sm:px-6 sm:py-4 font-semibold text-xs sm:text-sm whitespace-nowrap rounded-lg sm:rounded-xl transition-all duration-300 relative overflow-hidden group flex-shrink-0 touch-target ${
+                className={`flex items-center px-3 py-2 sm:px-6 sm:py-4 font-semibold text-xs sm:text-sm whitespace-nowrap rounded-lg sm:rounded-xl transition-all duration-300 relative overflow-hidden group flex-shrink-0 touch-target mx-1 ${
                   isActive
                     ? 'text-white shadow-lg transform scale-105'
                     : isDark 
@@ -86,6 +115,19 @@ const Navigation: React.FC = () => {
             );
           })}
         </div>
+
+        {/* Right Scroll Button */}
+        <button 
+          onClick={scrollRight}
+          className={`absolute right-0 top-1/2 transform -translate-y-1/2 z-10 p-1 rounded-full shadow-md ${
+            isDark 
+              ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
+              : 'bg-white text-gray-600 hover:bg-gray-50'
+          }`}
+          aria-label="Scroll right"
+        >
+          <ChevronRight className="w-5 h-5" />
+        </button>
       </div>
 
       {/* Mobile Level Badge */}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import Header from './Header';
 import ProgressOverview from './ProgressOverview';
@@ -8,11 +8,12 @@ import SchedulePlanner from './SchedulePlanner';
 import ResourceRecommender from './ResourceRecommender';
 import AIWeeklyPlanner from '../planner/AIWeeklyPlanner';
 import LandingScreen from '../landing/LandingScreen';
-import { BarChart3, MessageCircle, Calendar, BookOpen, Brain, TrendingUp, Sparkles, Home } from 'lucide-react';
+import { BarChart3, MessageCircle, Calendar, BookOpen, Brain, TrendingUp, Sparkles, Home, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
   const { userProfile } = useAuth();
   const [activeTab, setActiveTab] = useState('landing');
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const tabs = [
     { id: 'landing', label: 'Home', icon: Home, color: 'from-gray-500 to-gray-600' },
@@ -27,6 +28,18 @@ const Dashboard: React.FC = () => {
   const handleNavigation = (tabId: string) => {
     console.log('Navigating to:', tabId);
     setActiveTab(tabId);
+  };
+
+  const scrollLeft = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: -200, behavior: 'smooth' });
+    }
+  };
+
+  const scrollRight = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: 200, behavior: 'smooth' });
+    }
   };
 
   const renderActiveTab = () => {
@@ -87,10 +100,22 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="mb-8">
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-2">
-            <div className="flex overflow-x-auto scrollbar-hide">
+        {/* Tab Navigation with Horizontal Slider */}
+        <div className="mb-8 relative">
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-2 relative">
+            {/* Left Scroll Button */}
+            <button 
+              onClick={scrollLeft}
+              className="absolute left-0 top-1/2 transform -translate-y-1/2 z-10 p-1 rounded-full shadow-md bg-white text-gray-600 hover:bg-gray-50"
+              aria-label="Scroll left"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+
+            <div 
+              ref={scrollContainerRef}
+              className="flex overflow-x-auto scrollbar-hide px-6 scroll-smooth"
+            >
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -98,7 +123,7 @@ const Dashboard: React.FC = () => {
                   <button
                     key={tab.id}
                     onClick={() => handleNavigation(tab.id)}
-                    className={`flex items-center px-6 py-4 font-semibold text-sm whitespace-nowrap rounded-xl transition-all duration-300 relative overflow-hidden group ${
+                    className={`flex items-center px-6 py-4 font-semibold text-sm whitespace-nowrap rounded-xl transition-all duration-300 relative overflow-hidden group mx-1 ${
                       isActive
                         ? 'text-white shadow-lg transform scale-105'
                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
@@ -116,6 +141,15 @@ const Dashboard: React.FC = () => {
                 );
               })}
             </div>
+
+            {/* Right Scroll Button */}
+            <button 
+              onClick={scrollRight}
+              className="absolute right-0 top-1/2 transform -translate-y-1/2 z-10 p-1 rounded-full shadow-md bg-white text-gray-600 hover:bg-gray-50"
+              aria-label="Scroll right"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
           </div>
         </div>
 

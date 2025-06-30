@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useNavigate } from 'react-router-dom';
 import { LogOut, Settings, User, Bell, Search, Brain, Sparkles, Menu, X } from 'lucide-react';
 import SettingsModal from '../settings/SettingsModal';
 import ProfileModal from '../profile/ProfileModal';
@@ -9,6 +10,7 @@ import NotificationsModal from '../notifications/NotificationsModal';
 const Header: React.FC = () => {
   const { currentUser, userProfile, logout } = useAuth();
   const { isDark } = useTheme();
+  const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -52,7 +54,10 @@ const Header: React.FC = () => {
           <div className="flex justify-between items-center h-14 sm:h-16">
             {/* Logo & Brand */}
             <div className="flex items-center space-x-2 sm:space-x-4">
-              <div className="flex items-center space-x-2 sm:space-x-3">
+              <div 
+                className="flex items-center space-x-2 sm:space-x-3 cursor-pointer"
+                onClick={() => navigate('/overview')}
+              >
                 <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg">
                   <Brain className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
                 </div>

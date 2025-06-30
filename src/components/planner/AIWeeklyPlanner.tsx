@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { Calendar, Clock, Brain, Target, Plus, Settings, Sparkles, CheckCircle, Circle, ArrowRight, Zap, AlertCircle } from 'lucide-react';
+import { Calendar, Clock, Brain, Target, Plus, Settings, Sparkles, CheckCircle, Circle, ArrowRight, Zap, AlertCircle, X } from 'lucide-react';
 import { WeeklyPlanItem, LearningGoal } from '../../types';
 import { addWeeklyPlanItem, updateWeeklyPlanItem, deleteWeeklyPlanItem } from '../../services/firestore';
 import DragDropCalendar from './DragDropCalendar';
@@ -529,7 +529,14 @@ const AIWeeklyPlanner: React.FC = () => {
     }
     
     try {
-      const taskId = await addWeeklyPlanItem(currentUser.uid, taskData);
+      // Generate a unique ID for the task
+      const taskWithId: WeeklyPlanItem = {
+        ...taskData,
+        id: `manual-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      };
+      
+      // Add task to Firestore
+      await addWeeklyPlanItem(currentUser.uid, taskWithId);
       
       // If task is linked to a goal, update goal progress
       if (taskData.goalId) {
@@ -576,7 +583,7 @@ const AIWeeklyPlanner: React.FC = () => {
                 isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
               }`}
             >
-              ×
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>

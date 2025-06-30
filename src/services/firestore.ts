@@ -1177,27 +1177,38 @@ export const subscribeToProgress = (uid: string, callback: (progress: Progress[]
   });
 };
 
-// Weekly Plan Operations
+// Weekly Plan Operations - Fixed to ensure proper ID handling
 export const getWeeklyPlan = async (uid: string): Promise<WeeklyPlanItem[]> => {
   try {
+    console.log('Firestore: Loading weekly plan for user:', uid);
     const weeklyPlanRef = collection(db, 'users', uid, 'weekly_plan');
     const querySnapshot = await getDocs(weeklyPlanRef);
     
-    return querySnapshot.docs.map(doc => ({
-      id: doc.id,
+    const plan = querySnapshot.docs.map(doc => ({
+      id: doc.id, // Use Firestore-generated ID
       ...doc.data()
     })) as WeeklyPlanItem[];
+    
+    console.log('Firestore: Loaded', plan.length, 'weekly plan items');
+    return plan;
   } catch (error) {
     console.error('Firestore: Error loading weekly plan:', error);
     return [];
   }
 };
 
-export const addWeeklyPlanItem = async (uid: string, planItem: Omit<WeeklyPlanItem, 'id'>) => {
+export const addWeeklyPlanItem = async (uid: string, planItem: Omit<WeeklyPlanItem, 'id'>): Promise<string> => {
   try {
+    console.log('Firestore: Adding weekly plan item for user:', uid, planItem);
     const weeklyPlanRef = collection(db, 'users', uid, 'weekly_plan');
-    const docRef = await addDoc(weeklyPlanRef, planItem);
-    console.log('Firestore: Added weekly plan item with ID:', docRef.id);
+    
+    // Let Firestore generate the ID automatically
+    const docRef = await addDoc(weeklyPlanRef, {
+      ...planItem,
+      createdAt: Timestamp.now()
+    });
+    
+    console.log('Firestore: Added weekly plan item with Firestore-generated ID:', docRef.id);
     return docRef.id;
   } catch (error) {
     console.error('Firestore: Error adding weekly plan item:', error);
@@ -1206,10 +1217,28 @@ export const addWeeklyPlanItem = async (uid: string, planItem: Omit<WeeklyPlanIt
 };
 
 export const updateWeeklyPlanItem = async (uid: string, itemId: string, updates: Partial<WeeklyPlanItem>) => {
+  // Validate itemId parameter
+  if (!itemId || typeof itemId !== 'string' || itemId.trim() === '') {
+    throw new Error('Invalid itemId: itemId must be a non-empty string');
+  }
+
   try {
+    console.log('Firestore: Updating weekly plan item:', uid, itemId, updates);
     const itemRef = doc(db, 'users', uid, 'weekly_plan', itemId);
-    await updateDoc(itemRef, updates);
-    console.log('Firestore: Updated weekly plan item:', itemId);
+    
+    // Check if document exists before updating
+    const docSnap = await getDoc(itemRef);
+    if (!docSnap.exists()) {
+      console.warn('Firestore: Document does not exist:', itemId);
+      throw new Error(`No document to update: ${itemRef.path}`);
+    }
+    
+    await updateDoc(itemRef, {
+      ...updates,
+      updatedAt: Timestamp.now()
+    });
+    
+    console.log('Firestore: Updated weekly plan item successfully:', itemId);
   } catch (error) {
     console.error('Firestore: Error updating weekly plan item:', error);
     throw error;
@@ -1217,10 +1246,25 @@ export const updateWeeklyPlanItem = async (uid: string, itemId: string, updates:
 };
 
 export const deleteWeeklyPlanItem = async (uid: string, itemId: string) => {
+  // Validate itemId parameter
+  if (!itemId || typeof itemId !== 'string' || itemId.trim() === '') {
+    throw new Error('Invalid itemId: itemId must be a non-empty string');
+  }
+
   try {
+    console.log('Firestore: Deleting weekly plan item:', uid, itemId);
     const itemRef = doc(db, 'users', uid, 'weekly_plan', itemId);
+    
+    // Check if document exists before deleting
+    const docSnap = await getDoc(itemRef);
+    if (!docSnap.exists()) {
+      console.warn('Firestore: Document does not exist for deletion:', itemId);
+      // Don't throw error for deletion - item is effectively deleted
+      return;
+    }
+    
     await deleteDoc(itemRef);
-    console.log('Firestore: Deleted weekly plan item:', itemId);
+    console.log('Firestore: Deleted weekly plan item successfully:', itemId);
   } catch (error) {
     console.error('Firestore: Error deleting weekly plan item:', error);
     throw error;
@@ -1228,13 +1272,21 @@ export const deleteWeeklyPlanItem = async (uid: string, itemId: string) => {
 };
 
 export const subscribeToWeeklyPlan = (uid: string, callback: (plan: WeeklyPlanItem[]) => void) => {
+  console.log('Firestore: Setting up weekly plan subscription for user:', uid);
   const weeklyPlanRef = collection(db, 'users', uid, 'weekly_plan');
+  const q = query(weeklyPlanRef, orderBy('day'));
   
-  return onSnapshot(weeklyPlanRef, (snapshot) => {
+  return onSnapshot(q, (snapshot) => {
     const plan = snapshot.docs.map(doc => ({
-      id: doc.id,
+      id: doc.id, // Always use Firestore-generated ID
       ...doc.data()
     })) as WeeklyPlanItem[];
+    
+    console.log('Firestore: Weekly plan subscription update - now have', plan.length, 'items');
+    plan.forEach(item => {
+      console.log('Firestore: Plan item:', item.id, '-', item.topic, 'on', item.day);
+    });
+    
     callback(plan);
   }, (error) => {
     console.error('Firestore: Weekly plan subscription error:', error);
@@ -1391,7 +1443,7 @@ export const initializeSampleData = async (uid: string) => {
           type: "lesson" as const,
           completed: false,
           priority: "high" as const,
-          goalId: reactGoalId
+          goalId: reactGoalId || null
         },
         {
           day: weekDays[(dayOfWeek + 3) % 7], // 3 days from now
@@ -1402,7 +1454,7 @@ export const initializeSampleData = async (uid: string) => {
           type: "practice" as const,
           completed: false,
           priority: "medium" as const,
-          goalId: cssGoalId
+          goalId: cssGoalId || null
         }
       ];
       

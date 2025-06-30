@@ -307,8 +307,8 @@ const AIWeeklyPlanner: React.FC = () => {
     }
   };
 
-  const distributeTasksAcrossDays = (recommendations: AIRecommendation[]): WeeklyPlanItem[] => {
-    const tasks: WeeklyPlanItem[] = [];
+  const distributeTasksAcrossDays = (recommendations: AIRecommendation[]): Omit<WeeklyPlanItem, 'id'>[] => {
+    const tasks: Omit<WeeklyPlanItem, 'id'>[] = [];
     const availableDays = weekDays.filter(day => availability[day] > 0);
     
     if (availableDays.length === 0) {
@@ -358,8 +358,7 @@ const AIWeeklyPlanner: React.FC = () => {
         goalId: rec.suggestedGoalId || null // Ensure null instead of undefined
       };
 
-      // Add task to Firestore and let it generate the ID
-      tasks.push(task as WeeklyPlanItem);
+      tasks.push(task);
       dailyTimeUsed[bestDay] += rec.estimatedTime / 60;
       dayIndex++;
     });
@@ -407,24 +406,18 @@ const AIWeeklyPlanner: React.FC = () => {
         return;
       }
       
-      // Add tasks to Firestore
+      // Add tasks to Firestore - let Firestore generate IDs
       let addedCount = 0;
       for (const task of distributedTasks) {
         try {
+          console.log('AIWeeklyPlanner: Adding task to Firestore:', task);
           // Pass task without ID to let Firestore generate it
-          await addWeeklyPlanItem(currentUser.uid, task as Omit<WeeklyPlanItem, 'id'>);
+          const taskId = await addWeeklyPlanItem(currentUser.uid, task);
+          console.log('AIWeeklyPlanner: Task added with Firestore ID:', taskId);
           
           // If task is linked to a goal, update goal progress
           if (task.goalId) {
-            // Get all tasks for this goal
-            const goalTasks = weeklyPlan.filter(t => t.goalId === task.goalId);
-            const completedTasks = goalTasks.filter(t => t.completed);
-            const progressPercentage = goalTasks.length > 0 
-              ? Math.round((completedTasks.length / (goalTasks.length + 1)) * 100) 
-              : 0;
-            
-            // Update goal progress
-            await updateGoal(task.goalId, { progress: progressPercentage });
+            updateGoalProgressFromTasks(task.goalId);
           }
           
           addedCount++;
@@ -462,6 +455,7 @@ const AIWeeklyPlanner: React.FC = () => {
       const oldTask = weeklyPlan.find(t => t.id === taskId);
       const oldGoalId = oldTask?.goalId;
       
+      console.log('AIWeeklyPlanner: Updating task:', taskId, updates);
       await updateWeeklyPlanItem(currentUser.uid, taskId, updates);
       
       // If completion status changed or goal association changed, update goal progress
@@ -477,7 +471,7 @@ const AIWeeklyPlanner: React.FC = () => {
         }
       }
     } catch (error: any) {
-      console.error('Error updating task:', error);
+      console.error('AIWeeklyPlanner: Error updating task:', error);
       
       // Check if the error indicates the document doesn't exist
       if (error?.message?.includes('No document to update') || 
@@ -506,6 +500,7 @@ const AIWeeklyPlanner: React.FC = () => {
       
       const goalId = task.goalId;
       
+      console.log('AIWeeklyPlanner: Deleting task:', taskId);
       await deleteWeeklyPlanItem(currentUser.uid, taskId);
       
       // If task was linked to a goal, update goal progress
@@ -515,7 +510,7 @@ const AIWeeklyPlanner: React.FC = () => {
       
       setSuccess('Task deleted successfully');
     } catch (error: any) {
-      console.error('Error deleting task:', error);
+      console.error('AIWeeklyPlanner: Error deleting task:', error);
       
       // Check if the error indicates the document doesn't exist
       if (error?.message?.includes('No document to update') || 
@@ -567,9 +562,11 @@ const AIWeeklyPlanner: React.FC = () => {
     }
     
     try {
+      console.log('AIWeeklyPlanner: Adding manual task:', taskData);
       // Add task to Firestore without generating a manual ID
       // Let Firestore generate the ID automatically
-      await addWeeklyPlanItem(currentUser.uid, taskData);
+      const taskId = await addWeeklyPlanItem(currentUser.uid, taskData);
+      console.log('AIWeeklyPlanner: Manual task added with Firestore ID:', taskId);
       
       // If task is linked to a goal, update goal progress
       if (taskData.goalId) {
@@ -579,7 +576,7 @@ const AIWeeklyPlanner: React.FC = () => {
       setSuccess('Task added successfully!');
       setShowAddTask(false);
     } catch (error) {
-      console.error('Error adding task:', error);
+      console.error('AIWeeklyPlanner: Error adding task:', error);
       setError('Failed to add task. Please try again.');
     }
   };
@@ -636,6 +633,7 @@ const AIWeeklyPlanner: React.FC = () => {
               <Sparkles className="w-5 h-5 ml-2" />
             </h1>
             <p className="text-indigo-100 mt-2">
+              
               Personalized study plan generated based on your progress, goals, and availability
             </p>
           </div>

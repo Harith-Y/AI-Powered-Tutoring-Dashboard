@@ -37,11 +37,32 @@ const SchedulePlanner: React.FC = () => {
 
   const toggleTask = async (taskId: string, completed: boolean) => {
     if (!currentUser) return;
+    
     try {
+      // Validate that the task exists in our local state
+      const taskExists = weeklyPlan.find(t => t.id === taskId);
+      if (!taskExists) {
+        console.warn(`Task ${taskId} not found in local state, skipping update`);
+        setError('Task not found. Please refresh the page.');
+        return;
+      }
+
+      console.log('SchedulePlanner: Toggling task completion:', taskId, 'to', !completed);
       await updateWeeklyPlanItem(currentUser.uid, taskId, { completed: !completed });
       setSuccess('Task updated successfully!');
-    } catch (error) {
-      console.error('Error updating task:', error);
+    } catch (error: any) {
+      console.error('SchedulePlanner: Error updating task:', error);
+      
+      // Check if the error indicates the document doesn't exist
+      if (error?.message?.includes('No document to update') || 
+          error?.code === 'not-found' ||
+          error?.message?.includes('not found')) {
+        console.warn(`Task ${taskId} no longer exists in Firestore, it may have been deleted elsewhere`);
+        setError('Task no longer exists. The page will refresh automatically.');
+        // Let the subscription handle the state update
+        return;
+      }
+      
       setError('Failed to update task. Please try again.');
     }
   };
@@ -56,6 +77,7 @@ const SchedulePlanner: React.FC = () => {
     setError(null);
     
     try {
+      // Create task data without an ID - let Firestore generate it
       const taskToAdd: Omit<WeeklyPlanItem, 'id'> = {
         day: newTask.day,
         topic: newTask.topic,
@@ -64,9 +86,11 @@ const SchedulePlanner: React.FC = () => {
         difficulty: newTask.difficulty || 'medium',
         type: newTask.type || 'lesson',
         completed: false,
-        priority: newTask.priority || 'medium'
+        priority: newTask.priority || 'medium',
+        goalId: null // No goal association for manually added tasks
       };
 
+      console.log('SchedulePlanner: Adding task:', taskToAdd);
       await addWeeklyPlanItem(currentUser.uid, taskToAdd);
       
       // Reset form
@@ -84,7 +108,7 @@ const SchedulePlanner: React.FC = () => {
       setShowAddTask(false);
       setSuccess('Task added successfully!');
     } catch (error) {
-      console.error('Error adding task:', error);
+      console.error('SchedulePlanner: Error adding task:', error);
       setError('Failed to add task. Please try again.');
     } finally {
       setLoading(false);
@@ -99,10 +123,29 @@ const SchedulePlanner: React.FC = () => {
     }
     
     try {
+      // Validate that the task exists in our local state
+      const taskExists = weeklyPlan.find(t => t.id === taskId);
+      if (!taskExists) {
+        console.warn(`Task ${taskId} not found in local state, may already be deleted`);
+        setSuccess('Task deleted successfully');
+        return;
+      }
+
+      console.log('SchedulePlanner: Deleting task:', taskId);
       await deleteWeeklyPlanItem(currentUser.uid, taskId);
       setSuccess('Task deleted successfully!');
-    } catch (error) {
-      console.error('Error deleting task:', error);
+    } catch (error: any) {
+      console.error('SchedulePlanner: Error deleting task:', error);
+      
+      // Check if the error indicates the document doesn't exist
+      if (error?.message?.includes('No document to update') || 
+          error?.code === 'not-found' ||
+          error?.message?.includes('not found')) {
+        console.warn(`Task ${taskId} was already deleted from Firestore`);
+        setSuccess('Task deleted successfully!');
+        return;
+      }
+      
       setError('Failed to delete task. Please try again.');
     }
   };

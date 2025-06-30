@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { Calendar, Clock, Brain, Target, Plus, Settings, Sparkles, CheckCircle, Circle, ArrowRight, Zap, AlertCircle, X } from 'lucide-react';
+import { Calendar, Clock, Brain, Target, Plus, Settings, Sparkles, CheckCircle, Circle, ArrowRight, Zap, AlertCircle, X, Trash2 } from 'lucide-react';
 import { WeeklyPlanItem, LearningGoal } from '../../types';
-import { addWeeklyPlanItem, updateWeeklyPlanItem, deleteWeeklyPlanItem } from '../../services/firestore';
+import { addWeeklyPlanItem, updateWeeklyPlanItem, deleteWeeklyPlanItem, cleanupOrphanedTasks } from '../../services/firestore';
 import DragDropCalendar from './DragDropCalendar';
 import AvailabilitySetup from './AvailabilitySetup';
 import TaskForm from './TaskForm';
@@ -34,6 +34,7 @@ const AIWeeklyPlanner: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showAddTask, setShowAddTask] = useState(false);
+  const [isCleaningUp, setIsCleaningUp] = useState(false);
 
   const weekDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
   const weekDayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -48,6 +49,30 @@ const AIWeeklyPlanner: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [error, success]);
+
+  // Check for orphaned tasks on component mount
+  useEffect(() => {
+    const checkForOrphanedTasks = async () => {
+      if (!currentUser) return;
+      
+      // Check if there are any tasks with suspicious IDs
+      const suspiciousTasks = weeklyPlan.filter(task => 
+        task.id.startsWith('manual-') || 
+        task.id.startsWith('ai-generated-') ||
+        task.id.includes('-spuadwgvm') ||
+        (task.id.includes('-') && task.id.length > 25)
+      );
+      
+      if (suspiciousTasks.length > 0) {
+        console.log('Found', suspiciousTasks.length, 'potentially orphaned tasks');
+        setError(`Found ${suspiciousTasks.length} old tasks that may not work properly. Click "Clean Up Old Tasks" to fix this.`);
+      }
+    };
+    
+    if (weeklyPlan.length > 0) {
+      checkForOrphanedTasks();
+    }
+  }, [weeklyPlan, currentUser]);
 
   useEffect(() => {
     // Initialize availability from user preferences or defaults
@@ -75,6 +100,32 @@ const AIWeeklyPlanner: React.FC = () => {
       setAvailability(defaultAvailability);
     }
   }, [userPreferences]);
+
+  const handleCleanupOrphanedTasks = async () => {
+    if (!currentUser) return;
+    
+    setIsCleaningUp(true);
+    setError(null);
+    
+    try {
+      const result = await cleanupOrphanedTasks(currentUser.uid);
+      
+      if (result.cleaned > 0) {
+        setSuccess(`Successfully cleaned up ${result.cleaned} old tasks. Your task list should now work properly.`);
+      } else {
+        setSuccess('No orphaned tasks found. Your task list is clean.');
+      }
+      
+      if (result.errors.length > 0) {
+        console.error('Cleanup errors:', result.errors);
+      }
+    } catch (error) {
+      console.error('Error during cleanup:', error);
+      setError('Failed to clean up old tasks. Please try again.');
+    } finally {
+      setIsCleaningUp(false);
+    }
+  };
 
   const analyzeUserProgress = () => {
     const completedTopics = userProgress.map(p => p.topicName.toLowerCase());
@@ -585,6 +636,14 @@ const AIWeeklyPlanner: React.FC = () => {
   const totalScheduledHours = weeklyPlan.reduce((sum, task) => sum + task.estimatedTime / 60, 0);
   const utilizationRate = totalAvailableHours > 0 ? (totalScheduledHours / totalAvailableHours) * 100 : 0;
 
+  // Check if there are orphaned tasks
+  const orphanedTasks = weeklyPlan.filter(task => 
+    task.id.startsWith('manual-') || 
+    task.id.startsWith('ai-generated-') ||
+    task.id.includes('-spuadwgvm') ||
+    (task.id.includes('-') && task.id.length > 25)
+  );
+
   return (
     <div className={`space-y-6 transition-colors ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
       {/* Success/Error Messages */}
@@ -607,14 +666,35 @@ const AIWeeklyPlanner: React.FC = () => {
               )}
               <span>{error || success}</span>
             </div>
-            <button
-              onClick={() => { setError(null); setSuccess(null); }}
-              className={`p-1 rounded transition-colors ${
-                isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
-              }`}
-            >
-              <X className="w-4 h-4" />
-            </button>
+            <div className="flex items-center space-x-2">
+              {error && orphanedTasks.length > 0 && (
+                <button
+                  onClick={handleCleanupOrphanedTasks}
+                  disabled={isCleaningUp}
+                  className="flex items-center px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 text-sm font-medium transition-colors"
+                >
+                  {isCleaningUp ? (
+                    <>
+                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                      Cleaning...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-3 h-3 mr-1" />
+                      Clean Up Old Tasks
+                    </>
+                  )}
+                </button>
+              )}
+              <button
+                onClick={() => { setError(null); setSuccess(null); }}
+                className={`p-1 rounded transition-colors ${
+                  isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+                }`}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -633,7 +713,6 @@ const AIWeeklyPlanner: React.FC = () => {
               <Sparkles className="w-5 h-5 ml-2" />
             </h1>
             <p className="text-indigo-100 mt-2">
-              
               Personalized study plan generated based on your progress, goals, and availability
             </p>
           </div>

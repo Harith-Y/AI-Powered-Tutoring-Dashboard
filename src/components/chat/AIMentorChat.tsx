@@ -54,19 +54,22 @@ const AIMentorChat: React.FC = () => {
 
   // Initialize with greeting message when starting a new session
   useEffect(() => {
-    if (userProfile && messages.length === 0 && !currentSessionId) {
-      const greetingMessage = generateGreeting();
-      setMessages([{
-        id: '1',
-        content: greetingMessage,
-        sender: 'ai',
-        timestamp: new Date(),
-        adaptedToLevel: true,
-        memoryEnhanced: false,
-        mistralPowered: mistralService.isConfigured()
-      }]);
+    if (userProfile && messages.length === 0 && !isLoadingMessages) {
+      if (!currentSessionId) {
+        // Only show greeting for new sessions
+        const greetingMessage = generateGreeting();
+        setMessages([{
+          id: '1',
+          content: greetingMessage,
+          sender: 'ai',
+          timestamp: new Date(),
+          adaptedToLevel: true,
+          memoryEnhanced: false,
+          mistralPowered: mistralService.isConfigured()
+        }]);
+      }
     }
-  }, [userProfile, currentSessionId]);
+  }, [userProfile, currentSessionId, messages.length, isLoadingMessages]);
 
   const loadChatSessions = async () => {
     if (!currentUser) return;
@@ -76,6 +79,11 @@ const AIMentorChat: React.FC = () => {
       const sessions = await getChatSessions(currentUser.uid);
       setChatSessions(sessions);
       console.log('Loaded', sessions.length, 'chat sessions');
+      
+      // If there are sessions but no current session selected, load the most recent one
+      if (sessions.length > 0 && !currentSessionId) {
+        await loadChatSession(sessions[0].id);
+      }
     } catch (error) {
       console.error('Error loading chat sessions:', error);
     } finally {
@@ -87,12 +95,43 @@ const AIMentorChat: React.FC = () => {
     if (!currentUser) return;
     
     setIsLoadingMessages(true);
+    setMessages([]); // Clear current messages while loading
+    
     try {
+      console.log('Loading chat session:', sessionId);
       const sessionMessages = await getChatMessages(currentUser.uid, sessionId);
-      setMessages(sessionMessages);
+      
+      if (sessionMessages.length > 0) {
+        console.log('Loaded', sessionMessages.length, 'messages from session', sessionId);
+        setMessages(sessionMessages);
+      } else {
+        console.log('No messages found in session', sessionId);
+        // If no messages, add a greeting
+        const greetingMessage = generateGreeting();
+        const greetingChatMessage: ChatMessage = {
+          id: '1',
+          content: greetingMessage,
+          sender: 'ai',
+          timestamp: new Date(),
+          adaptedToLevel: true,
+          memoryEnhanced: false,
+          mistralPowered: mistralService.isConfigured()
+        };
+        
+        setMessages([greetingChatMessage]);
+        
+        // Save greeting to Firebase
+        await addChatMessage(currentUser.uid, sessionId, {
+          content: greetingMessage,
+          sender: 'ai',
+          adaptedToLevel: true,
+          memoryEnhanced: false,
+          mistralPowered: mistralService.isConfigured()
+        });
+      }
+      
       setCurrentSessionId(sessionId);
       setShowSessionList(false);
-      console.log('Loaded', sessionMessages.length, 'messages from session', sessionId);
     } catch (error) {
       console.error('Error loading chat session:', error);
     } finally {
@@ -155,6 +194,18 @@ const AIMentorChat: React.FC = () => {
       if (currentSessionId === sessionId) {
         setCurrentSessionId(null);
         setMessages([]);
+        
+        // Add a new greeting message
+        const greetingMessage = generateGreeting();
+        setMessages([{
+          id: '1',
+          content: greetingMessage,
+          sender: 'ai',
+          timestamp: new Date(),
+          adaptedToLevel: true,
+          memoryEnhanced: false,
+          mistralPowered: mistralService.isConfigured()
+        }]);
       }
       
       // Refresh sessions list
@@ -366,9 +417,20 @@ const AIMentorChat: React.FC = () => {
 
     // If no current session, create one
     if (!currentSessionId) {
-      await createNewSession();
-      // Wait a bit for the session to be created
-      await new Promise(resolve => setTimeout(resolve, 500));
+      try {
+        await createNewSession();
+        // Wait a bit for the session to be created
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (error) {
+        console.error('Error creating new session:', error);
+        return;
+      }
+    }
+
+    // Ensure we have a valid session ID
+    if (!currentSessionId) {
+      console.error('No valid session ID available');
+      return;
     }
 
     const userMessage: ChatMessage = {
@@ -392,15 +454,13 @@ const AIMentorChat: React.FC = () => {
 
     try {
       // Save user message to Firebase
-      if (currentSessionId) {
-        await addChatMessage(currentUser.uid, currentSessionId, {
-          content: currentMessage,
-          sender: 'user',
-          adaptedToLevel: false,
-          memoryEnhanced: false,
-          mistralPowered: false
-        });
-      }
+      await addChatMessage(currentUser.uid, currentSessionId, {
+        content: currentMessage,
+        sender: 'user',
+        adaptedToLevel: false,
+        memoryEnhanced: false,
+        mistralPowered: false
+      });
 
       const aiResponseContent = await getContextualResponse(currentMessage);
       
@@ -417,15 +477,13 @@ const AIMentorChat: React.FC = () => {
       setMessages(prev => [...prev, aiResponse]);
 
       // Save AI response to Firebase
-      if (currentSessionId) {
-        await addChatMessage(currentUser.uid, currentSessionId, {
-          content: aiResponseContent,
-          sender: 'ai',
-          adaptedToLevel: true,
-          memoryEnhanced: !!memoryContext,
-          mistralPowered: mistralService.isConfigured()
-        });
-      }
+      await addChatMessage(currentUser.uid, currentSessionId, {
+        content: aiResponseContent,
+        sender: 'ai',
+        adaptedToLevel: true,
+        memoryEnhanced: !!memoryContext,
+        mistralPowered: mistralService.isConfigured()
+      });
 
       // Store this interaction in memory for future reference
       if (currentUser && userProfile) {
@@ -608,6 +666,7 @@ const AIMentorChat: React.FC = () => {
                                   : 'bg-white border-gray-300 text-gray-900'
                               }`}
                               autoFocus
+                              onClick={(e) => e.stopPropagation()}
                             />
                             <button
                               onClick={(e) => {

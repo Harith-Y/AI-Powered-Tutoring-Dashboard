@@ -345,9 +345,8 @@ const AIWeeklyPlanner: React.FC = () => {
         attempts++;
       }
 
-      // Create the task
-      const task: WeeklyPlanItem = {
-        id: `ai-generated-${Date.now()}-${index}`,
+      // Create the task without an ID - let Firestore generate it
+      const task: Omit<WeeklyPlanItem, 'id'> = {
         day: bestDay,
         topic: rec.topic,
         description: rec.description,
@@ -359,7 +358,8 @@ const AIWeeklyPlanner: React.FC = () => {
         goalId: rec.suggestedGoalId || null // Ensure null instead of undefined
       };
 
-      tasks.push(task);
+      // Add task to Firestore and let it generate the ID
+      tasks.push(task as WeeklyPlanItem);
       dailyTimeUsed[bestDay] += rec.estimatedTime / 60;
       dayIndex++;
     });
@@ -411,7 +411,8 @@ const AIWeeklyPlanner: React.FC = () => {
       let addedCount = 0;
       for (const task of distributedTasks) {
         try {
-          await addWeeklyPlanItem(currentUser.uid, task);
+          // Pass task without ID to let Firestore generate it
+          await addWeeklyPlanItem(currentUser.uid, task as Omit<WeeklyPlanItem, 'id'>);
           
           // If task is linked to a goal, update goal progress
           if (task.goalId) {
@@ -529,14 +530,9 @@ const AIWeeklyPlanner: React.FC = () => {
     }
     
     try {
-      // Generate a unique ID for the task
-      const taskWithId: WeeklyPlanItem = {
-        ...taskData,
-        id: `manual-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-      };
-      
-      // Add task to Firestore
-      await addWeeklyPlanItem(currentUser.uid, taskWithId);
+      // Add task to Firestore without generating a manual ID
+      // Let Firestore generate the ID automatically
+      await addWeeklyPlanItem(currentUser.uid, taskData);
       
       // If task is linked to a goal, update goal progress
       if (taskData.goalId) {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { Trophy, Target, Flame, Clock, CheckCircle, BookOpen, TrendingUp, Sparkles, Star, Zap, Plus, X, Save, Calendar, Play, RefreshCw } from 'lucide-react';
+import { Trophy, Target, Flame, Clock, CheckCircle, BookOpen, TrendingUp, Sparkles, Star, Zap, Plus, X, Save, Calendar, Play, RefreshCw, ArrowRight } from 'lucide-react';
 import WhatsNext from './WhatsNext';
 
 const ProgressOverview: React.FC = () => {

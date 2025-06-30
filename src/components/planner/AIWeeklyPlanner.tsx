@@ -356,7 +356,7 @@ const AIWeeklyPlanner: React.FC = () => {
         type: rec.type,
         completed: false,
         priority: rec.priority,
-        goalId: rec.suggestedGoalId // Link to suggested goal if available
+        goalId: rec.suggestedGoalId || null // Ensure null instead of undefined
       };
 
       tasks.push(task);

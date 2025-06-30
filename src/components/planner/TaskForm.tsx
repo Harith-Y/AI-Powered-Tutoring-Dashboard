@@ -32,7 +32,7 @@ const TaskForm: React.FC<TaskFormProps> = ({
     type: 'lesson',
     completed: false,
     priority: 'medium',
-    goalId: ''
+    goalId: null
   });
 
   // Filter only active (non-completed) goals
@@ -42,7 +42,8 @@ const TaskForm: React.FC<TaskFormProps> = ({
     if (initialTask) {
       setTask({
         ...initialTask,
-        day: initialTask.day || selectedDay || ''
+        day: initialTask.day || selectedDay || '',
+        goalId: initialTask.goalId || null
       });
     } else if (selectedDay) {
       setTask(prev => ({ ...prev, day: selectedDay }));
@@ -70,7 +71,7 @@ const TaskForm: React.FC<TaskFormProps> = ({
         type: task.type || 'lesson',
         completed: task.completed || false,
         priority: task.priority || 'medium',
-        goalId: task.goalId || undefined
+        goalId: task.goalId || null
       };
 
       await onSubmit(taskToSubmit);
@@ -258,7 +259,7 @@ const TaskForm: React.FC<TaskFormProps> = ({
             </label>
             <select
               value={task.goalId || ''}
-              onChange={(e) => setTask({ ...task, goalId: e.target.value || undefined })}
+              onChange={(e) => setTask({ ...task, goalId: e.target.value === '' ? null : e.target.value })}
               className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors ${
                 isDark 
                   ? 'bg-gray-800 border-gray-600 text-gray-100' 
